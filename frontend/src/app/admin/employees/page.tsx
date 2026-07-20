@@ -40,7 +40,7 @@ export default function AdminEmployeesPage() {
                   <th className="px-6 py-3 font-medium text-text-secondary">Name</th>
                   <th className="px-6 py-3 font-medium text-text-secondary">Email</th>
                   <th className="px-6 py-3 font-medium text-text-secondary">Phone</th>
-                  <th className="px-6 py-3 font-medium text-text-secondary">Role</th>
+                  <th className="px-6 py-3 font-medium text-text-secondary">Job Role</th>
                   <th className="px-6 py-3 font-medium text-text-secondary">PL / CL / SL</th>
                 </tr>
               </thead>
@@ -53,7 +53,7 @@ export default function AdminEmployeesPage() {
                     <td className="px-6 py-4 text-text-secondary">{emp.user?.email}</td>
                     <td className="px-6 py-4 text-text-secondary">{emp.phone}</td>
                     <td className="px-6 py-4">
-                      <Badge>{emp.user?.role}</Badge>
+                      <Badge>{emp.jobRole}</Badge>
                     </td>
                     <td className="px-6 py-4 text-text-secondary">
                       {emp.leaveBalance

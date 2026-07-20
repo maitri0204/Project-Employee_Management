@@ -1,9 +1,10 @@
 import { Request, Response } from "express";
 import prisma from "../config/database";
-import { getFileUrl } from "../middleware/upload";
+import { JOB_ROLES } from "../constants/employee";
+import { getFileUrl, getFileUrls } from "../middleware/upload";
 import { sendError, sendSuccess } from "../utils/response";
 
-const parseFiles = (files: Express.Multer.File[] | undefined) => {
+const parseFile = (files: Express.Multer.File[] | undefined) => {
   return files?.[0]?.filename;
 };
 
@@ -15,19 +16,23 @@ export const createEmployee = async (req: Request, res: Response) => {
       lastName,
       dateOfBirth,
       gender,
+      jobRole,
       email,
-      role,
-      address,
+      addressLine1,
+      addressLine2,
+      addressLine3,
+      country,
+      state,
+      city,
+      pincode,
       phone,
       panNumber,
       aadharNumber,
       bankAccountNumber,
+      accountType,
       ifscCode,
       bankName,
       bankBranchName,
-      pl,
-      cl,
-      sl,
     } = req.body;
 
     if (
@@ -35,17 +40,38 @@ export const createEmployee = async (req: Request, res: Response) => {
       !lastName ||
       !dateOfBirth ||
       !gender ||
+      !jobRole ||
       !email ||
-      !address ||
+      !addressLine1 ||
+      !country ||
+      !state ||
+      !city ||
+      !pincode ||
       !phone ||
       !panNumber ||
       !aadharNumber ||
       !bankAccountNumber ||
+      !accountType ||
       !ifscCode ||
       !bankName ||
       !bankBranchName
     ) {
       return sendError(res, "Please fill all required fields.");
+    }
+
+    if (!(JOB_ROLES as readonly string[]).includes(jobRole)) {
+      return sendError(res, "Please select a valid job role.");
+    }
+
+    if (!["CORPORATE", "INDIVIDUAL"].includes(accountType)) {
+      return sendError(res, "Please select a valid account type.");
+    }
+
+    if (!phone || !/^\+\d{1,4}\d{10}$/.test(phone)) {
+      return sendError(
+        res,
+        "Please provide a valid phone number with country code and 10 digits."
+      );
     }
 
     const normalizedEmail = email.toLowerCase().trim();
@@ -76,7 +102,7 @@ export const createEmployee = async (req: Request, res: Response) => {
     const user = await prisma.user.create({
       data: {
         email: normalizedEmail,
-        role: role === "ADMIN" ? "ADMIN" : "EMPLOYEE",
+        role: "EMPLOYEE",
         employee: {
           create: {
             firstName,
@@ -84,24 +110,27 @@ export const createEmployee = async (req: Request, res: Response) => {
             lastName,
             dateOfBirth: new Date(dateOfBirth),
             gender,
-            address,
+            jobRole,
+            addressLine1,
+            addressLine2: addressLine2 || null,
+            addressLine3: addressLine3 || null,
+            country,
+            state,
+            city,
+            pincode,
             phone,
             panNumber,
             aadharNumber,
             bankAccountNumber,
+            accountType,
             ifscCode,
             bankName,
             bankBranchName,
-            aadharCardUrl: getFileUrl(parseFiles(files?.aadharCard)),
-            panCardUrl: getFileUrl(parseFiles(files?.panCard)),
-            cancelledChequeUrl: getFileUrl(parseFiles(files?.cancelledCheque)),
-            leaveBalance: {
-              create: {
-                pl: parseInt(pl) || 0,
-                cl: parseInt(cl) || 0,
-                sl: parseInt(sl) || 0,
-              },
-            },
+            aadharCardUrl: getFileUrl(parseFile(files?.aadharCard)),
+            panCardUrl: getFileUrl(parseFile(files?.panCard)),
+            cancelledChequeUrl: getFileUrl(parseFile(files?.cancelledCheque)),
+            resumeUrl: getFileUrl(parseFile(files?.resume)),
+            degreeCertificateUrls: getFileUrls(files?.degreeCertificates),
           },
         },
       },
@@ -175,15 +204,22 @@ export const updateEmployee = async (req: Request, res: Response) => {
       lastName,
       dateOfBirth,
       gender,
-      address,
+      jobRole,
+      addressLine1,
+      addressLine2,
+      addressLine3,
+      country,
+      state,
+      city,
+      pincode,
       phone,
       panNumber,
       aadharNumber,
       bankAccountNumber,
+      accountType,
       ifscCode,
       bankName,
       bankBranchName,
-      role,
     } = req.body;
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
@@ -196,22 +232,36 @@ export const updateEmployee = async (req: Request, res: Response) => {
         ...(lastName && { lastName }),
         ...(dateOfBirth && { dateOfBirth: new Date(dateOfBirth) }),
         ...(gender && { gender }),
-        ...(address && { address }),
+        ...(jobRole && { jobRole }),
+        ...(addressLine1 && { addressLine1 }),
+        ...(addressLine2 !== undefined && { addressLine2: addressLine2 || null }),
+        ...(addressLine3 !== undefined && { addressLine3: addressLine3 || null }),
+        ...(country && { country }),
+        ...(state && { state }),
+        ...(city && { city }),
+        ...(pincode && { pincode }),
         ...(phone && { phone }),
         ...(panNumber && { panNumber }),
         ...(aadharNumber && { aadharNumber }),
         ...(bankAccountNumber && { bankAccountNumber }),
+        ...(accountType && { accountType }),
         ...(ifscCode && { ifscCode }),
         ...(bankName && { bankName }),
         ...(bankBranchName && { bankBranchName }),
         ...(files?.aadharCard && {
-          aadharCardUrl: getFileUrl(parseFiles(files.aadharCard)),
+          aadharCardUrl: getFileUrl(parseFile(files.aadharCard)),
         }),
         ...(files?.panCard && {
-          panCardUrl: getFileUrl(parseFiles(files.panCard)),
+          panCardUrl: getFileUrl(parseFile(files.panCard)),
         }),
         ...(files?.cancelledCheque && {
-          cancelledChequeUrl: getFileUrl(parseFiles(files.cancelledCheque)),
+          cancelledChequeUrl: getFileUrl(parseFile(files.cancelledCheque)),
+        }),
+        ...(files?.resume && {
+          resumeUrl: getFileUrl(parseFile(files.resume)),
+        }),
+        ...(files?.degreeCertificates && {
+          degreeCertificateUrls: getFileUrls(files.degreeCertificates),
         }),
       },
       include: {
@@ -221,13 +271,6 @@ export const updateEmployee = async (req: Request, res: Response) => {
         leaveBalance: true,
       },
     });
-
-    if (role) {
-      await prisma.user.update({
-        where: { id: employee.userId },
-        data: { role: role === "ADMIN" ? "ADMIN" : "EMPLOYEE" },
-      });
-    }
 
     return sendSuccess(res, "Employee updated successfully.", employee);
   } catch (error) {

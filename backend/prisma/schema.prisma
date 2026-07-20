@@ -27,29 +27,39 @@ model Otp {
 }
 
 model Employee {
-  id                 String         @id @default(auto()) @map("_id") @db.ObjectId
-  userId             String         @unique @db.ObjectId
-  user               User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  firstName          String
-  middleName         String?
-  lastName           String
-  dateOfBirth        DateTime
-  gender             String
-  address            String
-  phone              String
-  panNumber          String         @unique
-  aadharNumber       String         @unique
-  bankAccountNumber  String
-  ifscCode           String
-  bankName           String
-  bankBranchName     String
-  aadharCardUrl      String?
-  panCardUrl         String?
-  cancelledChequeUrl String?
-  createdAt          DateTime       @default(now())
-  updatedAt          DateTime       @updatedAt
-  leaveBalance       LeaveBalance?
-  leaveRequests      LeaveRequest[]
+  id                    String         @id @default(auto()) @map("_id") @db.ObjectId
+  userId                String         @unique @db.ObjectId
+  user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName             String
+  middleName            String?
+  lastName              String
+  dateOfBirth           DateTime
+  gender                String
+  jobRole               String
+  addressLine1          String
+  addressLine2          String?
+  addressLine3          String?
+  country               String
+  state                 String
+  city                  String
+  pincode               String
+  phone                 String
+  panNumber             String         @unique
+  aadharNumber          String         @unique
+  bankAccountNumber     String
+  accountType           String
+  ifscCode              String
+  bankName              String
+  bankBranchName        String
+  aadharCardUrl         String?
+  panCardUrl            String?
+  cancelledChequeUrl    String?
+  degreeCertificateUrls String[]
+  resumeUrl             String?
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  leaveBalance          LeaveBalance?
+  leaveRequests         LeaveRequest[]
 }
 
 model LeaveBalance {

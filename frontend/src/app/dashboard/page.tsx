@@ -5,6 +5,7 @@ import Navbar from "@/components/Navbar";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import { leaveApi } from "@/lib/services";
+import { GENDER_OPTIONS } from "@/constants/employee";
 import { LeaveBalance } from "@/types";
 import { Badge, Card } from "@/components/ui";
 
@@ -49,7 +50,10 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex justify-between gap-4">
                   <dt className="text-text-secondary">Gender</dt>
-                  <dd className="font-medium text-text-primary">{employee.gender}</dd>
+                  <dd className="font-medium text-text-primary">
+                    {GENDER_OPTIONS.find((g) => g.value === employee.gender)?.label ??
+                      employee.gender}
+                  </dd>
                 </div>
                 <div className="flex justify-between gap-4">
                   <dt className="text-text-secondary">Phone</dt>
@@ -62,15 +66,25 @@ export default function DashboardPage() {
                   </dd>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <dt className="text-text-secondary">Address</dt>
-                  <dd className="max-w-[60%] text-right font-medium text-text-primary">
-                    {employee.address}
+                  <dt className="text-text-secondary">Job Role</dt>
+                  <dd>
+                    <Badge>{employee.jobRole}</Badge>
                   </dd>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <dt className="text-text-secondary">Role</dt>
-                  <dd>
-                    <Badge>{user?.role}</Badge>
+                  <dt className="text-text-secondary">Address</dt>
+                  <dd className="max-w-[60%] text-right font-medium text-text-primary">
+                    {[
+                      employee.addressLine1,
+                      employee.addressLine2,
+                      employee.addressLine3,
+                      employee.city,
+                      employee.state,
+                      employee.country,
+                      employee.pincode,
+                    ]
+                      .filter(Boolean)
+                      .join(", ")}
                   </dd>
                 </div>
               </dl>

@@ -1,7 +1,8 @@
 export type Role = "ADMIN" | "EMPLOYEE";
 export type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED";
 export type LeaveType = "PL" | "CL" | "SL";
-export type Gender = "MALE" | "FEMALE" | "OTHER";
+export type Gender = "MALE" | "FEMALE" | "OTHER" | "PREFER_NOT_TO_SAY";
+export type { JobRole, AccountType } from "@/constants/employee";
 
 export interface LeaveBalance {
   id: string;
@@ -20,17 +21,27 @@ export interface Employee {
   lastName: string;
   dateOfBirth: string;
   gender: Gender;
-  address: string;
+  jobRole: string;
+  addressLine1: string;
+  addressLine2?: string | null;
+  addressLine3?: string | null;
+  country: string;
+  state: string;
+  city: string;
+  pincode: string;
   phone: string;
   panNumber: string;
   aadharNumber: string;
   bankAccountNumber: string;
+  accountType: string;
   ifscCode: string;
   bankName: string;
   bankBranchName: string;
   aadharCardUrl?: string | null;
   panCardUrl?: string | null;
   cancelledChequeUrl?: string | null;
+  degreeCertificateUrls: string[];
+  resumeUrl?: string | null;
   createdAt: string;
   updatedAt: string;
   user?: {
@@ -82,25 +93,4 @@ export interface ApplyLeaveData {
   startDate: string;
   endDate: string;
   reason: string;
-}
-
-export interface CreateEmployeeData {
-  firstName: string;
-  middleName?: string;
-  lastName: string;
-  dateOfBirth: string;
-  gender: Gender;
-  email: string;
-  role: Role;
-  address: string;
-  phone: string;
-  panNumber: string;
-  aadharNumber: string;
-  bankAccountNumber: string;
-  ifscCode: string;
-  bankName: string;
-  bankBranchName: string;
-  pl: number;
-  cl: number;
-  sl: number;
 }

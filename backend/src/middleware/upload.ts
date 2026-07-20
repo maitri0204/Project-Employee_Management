@@ -39,8 +39,16 @@ export const uploadEmployeeDocs = multer({
   { name: "aadharCard", maxCount: 1 },
   { name: "panCard", maxCount: 1 },
   { name: "cancelledCheque", maxCount: 1 },
+  { name: "resume", maxCount: 1 },
+  { name: "degreeCertificates", maxCount: 10 },
 ]);
 
 export const getFileUrl = (filename: string | undefined): string | undefined => {
   return filename ? `/uploads/${filename}` : undefined;
+};
+
+export const getFileUrls = (files: Express.Multer.File[] | undefined): string[] => {
+  return (files ?? [])
+    .map((file) => getFileUrl(file.filename))
+    .filter((url): url is string => Boolean(url));
 };
