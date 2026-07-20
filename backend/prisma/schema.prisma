@@ -1,0 +1,77 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  email     String    @unique
+  role      String    @default("EMPLOYEE")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  employee  Employee?
+}
+
+model Otp {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  email     String
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
+}
+
+model Employee {
+  id                 String         @id @default(auto()) @map("_id") @db.ObjectId
+  userId             String         @unique @db.ObjectId
+  user               User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  firstName          String
+  middleName         String?
+  lastName           String
+  dateOfBirth        DateTime
+  gender             String
+  address            String
+  phone              String
+  panNumber          String         @unique
+  aadharNumber       String         @unique
+  bankAccountNumber  String
+  ifscCode           String
+  bankName           String
+  bankBranchName     String
+  aadharCardUrl      String?
+  panCardUrl         String?
+  cancelledChequeUrl String?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  leaveBalance       LeaveBalance?
+  leaveRequests      LeaveRequest[]
+}
+
+model LeaveBalance {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  employeeId String   @unique @db.ObjectId
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  pl         Int      @default(0)
+  cl         Int      @default(0)
+  sl         Int      @default(0)
+  updatedAt  DateTime @updatedAt
+}
+
+model LeaveRequest {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  employeeId String   @db.ObjectId
+  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveType  String
+  startDate  DateTime
+  endDate    DateTime
+  reason     String
+  status     String   @default("PENDING")
+  adminNote  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
