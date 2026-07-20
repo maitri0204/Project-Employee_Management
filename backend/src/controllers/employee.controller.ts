@@ -3,6 +3,7 @@ import prisma from "../config/database";
 import { JOB_ROLES } from "../constants/employee";
 import { getFileUrl, getFileUrls } from "../middleware/upload";
 import { sendError, sendSuccess } from "../utils/response";
+import { validateIdentityFields, validateAadharNumber, validateIfscCode, validatePanNumber } from "../utils/validation";
 
 const parseFile = (files: Express.Multer.File[] | undefined) => {
   return files?.[0]?.filename;
@@ -67,6 +68,11 @@ export const createEmployee = async (req: Request, res: Response) => {
       return sendError(res, "Please select a valid account type.");
     }
 
+    const identityError = validateIdentityFields({ panNumber, aadharNumber, ifscCode });
+    if (identityError) {
+      return sendError(res, identityError);
+    }
+
     if (!phone || !/^\+\d{1,4}\d{10}$/.test(phone)) {
       return sendError(
         res,
@@ -119,11 +125,11 @@ export const createEmployee = async (req: Request, res: Response) => {
             city,
             pincode,
             phone,
-            panNumber,
-            aadharNumber,
+            panNumber: panNumber.trim().toUpperCase(),
+            aadharNumber: aadharNumber.replace(/\s/g, ""),
             bankAccountNumber,
             accountType,
-            ifscCode,
+            ifscCode: ifscCode.trim().toUpperCase(),
             bankName,
             bankBranchName,
             aadharCardUrl: getFileUrl(parseFile(files?.aadharCard)),
@@ -224,6 +230,19 @@ export const updateEmployee = async (req: Request, res: Response) => {
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
+    if (panNumber) {
+      const panError = validatePanNumber(panNumber);
+      if (panError) return sendError(res, panError);
+    }
+    if (aadharNumber) {
+      const aadharError = validateAadharNumber(aadharNumber);
+      if (aadharError) return sendError(res, aadharError);
+    }
+    if (ifscCode) {
+      const ifscError = validateIfscCode(ifscCode);
+      if (ifscError) return sendError(res, ifscError);
+    }
+
     const employee = await prisma.employee.update({
       where: { id },
       data: {
@@ -241,11 +260,11 @@ export const updateEmployee = async (req: Request, res: Response) => {
         ...(city && { city }),
         ...(pincode && { pincode }),
         ...(phone && { phone }),
-        ...(panNumber && { panNumber }),
-        ...(aadharNumber && { aadharNumber }),
+        ...(panNumber && { panNumber: panNumber.trim().toUpperCase() }),
+        ...(aadharNumber && { aadharNumber: aadharNumber.replace(/\s/g, "") }),
         ...(bankAccountNumber && { bankAccountNumber }),
         ...(accountType && { accountType }),
-        ...(ifscCode && { ifscCode }),
+        ...(ifscCode && { ifscCode: ifscCode.trim().toUpperCase() }),
         ...(bankName && { bankName }),
         ...(bankBranchName && { bankBranchName }),
         ...(files?.aadharCard && {

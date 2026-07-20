@@ -6,6 +6,7 @@ import { City, Country, State } from "country-state-city";
 import Navbar from "@/components/Navbar";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { employeeApi } from "@/lib/services";
+import { validateIdentityFields } from "@/lib/validation";
 import { ACCOUNT_TYPES, GENDER_OPTIONS, JOB_ROLES } from "@/constants/employee";
 import { Gender } from "@/types";
 import { Button, Card, FileInput, Input, Select } from "@/components/ui";
@@ -112,6 +113,17 @@ export default function AddEmployeePage() {
     try {
       if (!/^\d{10}$/.test(form.phoneNumber)) {
         setError("Phone number must be exactly 10 digits.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      const identityError = validateIdentityFields({
+        panNumber: form.panNumber,
+        aadharNumber: form.aadharNumber,
+        ifscCode: form.ifscCode,
+      });
+      if (identityError) {
+        setError(identityError);
         setIsSubmitting(false);
         return;
       }
@@ -332,14 +344,25 @@ export default function AddEmployeePage() {
                 <Input
                   label="PAN Number"
                   value={form.panNumber}
-                  onChange={(e) => update("panNumber", e.target.value.toUpperCase())}
+                  onChange={(e) =>
+                    update(
+                      "panNumber",
+                      e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10)
+                    )
+                  }
+                  placeholder="ABCDE1234F"
+                  maxLength={10}
                   required
                 />
                 <Input
                   label="Aadhar Number"
                   value={form.aadharNumber}
-                  onChange={(e) => update("aadharNumber", e.target.value)}
+                  onChange={(e) =>
+                    update("aadharNumber", e.target.value.replace(/\D/g, "").slice(0, 12))
+                  }
+                  placeholder="12-digit number"
                   maxLength={12}
+                  inputMode="numeric"
                   required
                 />
                 <Input
@@ -364,7 +387,14 @@ export default function AddEmployeePage() {
                 <Input
                   label="IFSC Code"
                   value={form.ifscCode}
-                  onChange={(e) => update("ifscCode", e.target.value.toUpperCase())}
+                  onChange={(e) =>
+                    update(
+                      "ifscCode",
+                      e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 11)
+                    )
+                  }
+                  placeholder="ABCD0123456"
+                  maxLength={11}
                   required
                 />
                 <Input
