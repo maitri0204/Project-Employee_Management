@@ -62,9 +62,10 @@ export const verifyOtp = async (req: Request, res: Response) => {
     }
 
     const normalizedEmail = email.toLowerCase().trim();
+    const normalizedOtp = String(otp).replace(/\s/g, "");
 
     const otpRecord = await prisma.otp.findFirst({
-      where: { email: normalizedEmail, code: otp },
+      where: { email: normalizedEmail, code: normalizedOtp },
       orderBy: { createdAt: "desc" },
     });
 

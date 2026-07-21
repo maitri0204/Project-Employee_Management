@@ -2,7 +2,7 @@ import { Request } from "express";
 
 export type Role = "ADMIN" | "EMPLOYEE";
 export type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED";
-export type LeaveType = "PL" | "CL" | "SL";
+export type LeaveType = "PL" | "CL" | "SL" | "LWP";
 export type Gender = "MALE" | "FEMALE" | "OTHER" | "PREFER_NOT_TO_SAY";
 
 export interface JwtPayload {

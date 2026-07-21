@@ -26,6 +26,15 @@ model Otp {
   @@index([email])
 }
 
+model LeavePolicy {
+  id                 String   @id @default(auto()) @map("_id") @db.ObjectId
+  plMonthlyAllowance Int      @default(0)
+  plRepeatMonthly    Boolean  @default(true)
+  annualCl           Int      @default(0)
+  annualSl           Int      @default(0)
+  updatedAt          DateTime @updatedAt
+}
+
 model Employee {
   id                    String         @id @default(auto()) @map("_id") @db.ObjectId
   userId                String         @unique @db.ObjectId
@@ -35,19 +44,19 @@ model Employee {
   lastName              String
   dateOfBirth           DateTime
   gender                String
-  jobRole               String
-  addressLine1          String
+  jobRole               String?
+  addressLine1          String?
   addressLine2          String?
   addressLine3          String?
-  country               String
-  state                 String
-  city                  String
-  pincode               String
+  country               String?
+  state                 String?
+  city                  String?
+  pincode               String?
   phone                 String
   panNumber             String         @unique
   aadharNumber          String         @unique
   bankAccountNumber     String
-  accountType           String
+  accountType           String?
   ifscCode              String
   bankName              String
   bankBranchName        String
@@ -56,6 +65,8 @@ model Employee {
   cancelledChequeUrl    String?
   degreeCertificateUrls String[]
   resumeUrl             String?
+  isArchived            Boolean        @default(false)
+  joiningDate           DateTime?
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt
   leaveBalance          LeaveBalance?
@@ -63,25 +74,30 @@ model Employee {
 }
 
 model LeaveBalance {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  employeeId String   @unique @db.ObjectId
-  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  pl         Int      @default(0)
-  cl         Int      @default(0)
-  sl         Int      @default(0)
-  updatedAt  DateTime @updatedAt
+  id                  String   @id @default(auto()) @map("_id") @db.ObjectId
+  employeeId          String   @unique @db.ObjectId
+  employee            Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  pl                  Int      @default(0)
+  cl                  Int      @default(0)
+  sl                  Int      @default(0)
+  lwpUsed             Int      @default(0)
+  lastPlAccrualPeriod String?
+  lastClSlCreditFY    String?
+  updatedAt           DateTime @updatedAt
 }
 
 model LeaveRequest {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  employeeId String   @db.ObjectId
-  employee   Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  leaveType  String
-  startDate  DateTime
-  endDate    DateTime
-  reason     String
-  status     String   @default("PENDING")
-  adminNote  String?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  employeeId   String   @db.ObjectId
+  employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  leaveType    String
+  startDate    DateTime
+  endDate      DateTime
+  reason       String
+  days         Int?
+  sandwichDays Int      @default(0)
+  status       String   @default("PENDING")
+  adminNote    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }

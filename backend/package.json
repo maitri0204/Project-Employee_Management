@@ -8,8 +8,11 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "db:generate": "prisma generate",
+    "postinstall": "prisma generate",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
+    "db:backfill": "tsx prisma/backfill-leave.ts",
+    "db:cleanup": "tsx prisma/cleanup-users.ts",
     "db:studio": "prisma studio"
   },
   "keywords": [],
@@ -23,6 +26,7 @@
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.2.0",
+    "node-cron": "^4.6.0",
     "nodemailer": "^9.0.3"
   },
   "devDependencies": {
@@ -32,6 +36,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.2.0",
     "@types/node": "^26.1.1",
+    "@types/node-cron": "^3.0.11",
     "@types/nodemailer": "^8.0.1",
     "prisma": "^5.22.0",
     "tsx": "^4.23.1",

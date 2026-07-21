@@ -30,10 +30,110 @@ export const validateIdentityFields = (data: {
   panNumber: string;
   aadharNumber: string;
   ifscCode: string;
-}): string | null => {
-  return (
-    validatePanNumber(data.panNumber) ||
-    validateAadharNumber(data.aadharNumber) ||
-    validateIfscCode(data.ifscCode)
-  );
+}): Record<string, string> => {
+  const errors: Record<string, string> = {};
+  const panError = validatePanNumber(data.panNumber);
+  const aadharError = validateAadharNumber(data.aadharNumber);
+  const ifscError = validateIfscCode(data.ifscCode);
+  if (panError) errors.panNumber = panError;
+  if (aadharError) errors.aadharNumber = aadharError;
+  if (ifscError) errors.ifscCode = ifscError;
+  return errors;
+};
+
+export type EmployeeFormData = {
+  firstName: string;
+  middleName: string;
+  lastName: string;
+  dateOfBirth: string;
+  gender: string;
+  jobRole: string;
+  email: string;
+  phoneNumber: string;
+  addressLine1: string;
+  country: string;
+  state: string;
+  city: string;
+  pincode: string;
+  panNumber: string;
+  aadharNumber: string;
+  bankAccountNumber: string;
+  accountType: string;
+  ifscCode: string;
+  bankName: string;
+  bankBranchName: string;
+};
+
+export const validateEmployeeForm = (
+  form: EmployeeFormData,
+  countryCode: string,
+  stateCode: string
+): Record<string, string> => {
+  const errors: Record<string, string> = {};
+
+  if (!form.firstName.trim()) errors.firstName = "First name is required.";
+  if (!form.lastName.trim()) errors.lastName = "Last name is required.";
+  if (!form.dateOfBirth) errors.dateOfBirth = "Date of birth is required.";
+  if (!form.jobRole) errors.jobRole = "Please select a role.";
+  if (!form.email.trim()) {
+    errors.email = "Email is required.";
+  } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) {
+    errors.email = "Please enter a valid email address.";
+  }
+  if (!form.phoneNumber) {
+    errors.phoneNumber = "Phone number is required.";
+  } else if (!/^\d{10}$/.test(form.phoneNumber)) {
+    errors.phoneNumber = "Phone number must be exactly 10 digits.";
+  }
+  if (!form.addressLine1.trim()) errors.addressLine1 = "Address line 1 is required.";
+  if (!countryCode) errors.country = "Please select a country.";
+  if (!stateCode) errors.state = "Please select a state.";
+  if (!form.city) errors.city = "Please select a city.";
+  if (!form.pincode.trim()) errors.pincode = "Pincode is required.";
+  if (!form.bankAccountNumber.trim()) {
+    errors.bankAccountNumber = "Bank account number is required.";
+  }
+  if (!form.accountType) errors.accountType = "Please select account type.";
+  if (!form.bankName.trim()) errors.bankName = "Bank name is required.";
+  if (!form.bankBranchName.trim()) errors.bankBranchName = "Bank branch name is required.";
+
+  Object.assign(errors, validateIdentityFields(form));
+
+  return errors;
+};
+
+export const mapApiErrorToField = (message: string): Record<string, string> => {
+  const lower = message.toLowerCase();
+  if (lower.includes("email")) return { email: message };
+  if (lower.includes("pan card")) return { panCard: message };
+  if (lower.includes("pan")) return { panNumber: message };
+  if (lower.includes("aadhar card")) return { aadharCard: message };
+  if (lower.includes("aadhar")) return { aadharNumber: message };
+  if (lower.includes("cancelled cheque")) return { cancelledCheque: message };
+  if (lower.includes("resume")) return { resume: message };
+  if (lower.includes("degree certificate")) return { degreeCertificates: message };
+  if (lower.includes("phone")) return { phoneNumber: message };
+  return { submit: message };
+};
+
+export type EmployeeFormFiles = {
+  aadharCard?: File;
+  panCard?: File;
+  cancelledCheque?: File;
+  resume?: File;
+  degreeCertificates?: File[];
+};
+
+export const validateEmployeeDocuments = (
+  files: EmployeeFormFiles
+): Record<string, string> => {
+  const errors: Record<string, string> = {};
+  if (!files.aadharCard) errors.aadharCard = "Aadhar card is required.";
+  if (!files.panCard) errors.panCard = "PAN card is required.";
+  if (!files.cancelledCheque) errors.cancelledCheque = "Cancelled cheque is required.";
+  if (!files.resume) errors.resume = "Resume is required.";
+  if (!files.degreeCertificates || files.degreeCertificates.length === 0) {
+    errors.degreeCertificates = "At least one degree certificate is required.";
+  }
+  return errors;
 };

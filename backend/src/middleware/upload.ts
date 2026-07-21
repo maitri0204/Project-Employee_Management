@@ -1,6 +1,8 @@
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { Request, Response, NextFunction } from "express";
+import { sendError } from "../utils/response";
 
 const uploadDir = path.join(process.cwd(), "uploads");
 
@@ -43,12 +45,42 @@ export const uploadEmployeeDocs = multer({
   { name: "degreeCertificates", maxCount: 10 },
 ]);
 
+export const handleEmployeeUpload = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  uploadEmployeeDocs(req, res, (err) => {
+    if (!err) return next();
+
+    if (err instanceof multer.MulterError) {
+      if (err.code === "LIMIT_FILE_COUNT") {
+        return sendError(res, "Too many degree certificate files (maximum 10).", 400);
+      }
+      if (err.code === "LIMIT_FILE_SIZE") {
+        return sendError(res, "Each file must be 5 MB or smaller.", 400);
+      }
+      return sendError(res, err.message, 400);
+    }
+
+    return sendError(res, err.message || "File upload failed.", 400);
+  });
+};
+
 export const getFileUrl = (filename: string | undefined): string | undefined => {
   return filename ? `/uploads/${filename}` : undefined;
 };
 
-export const getFileUrls = (files: Express.Multer.File[] | undefined): string[] => {
-  return (files ?? [])
+export const getFileUrls = (files: Express.Multer.File[] | Express.Multer.File | undefined): string[] => {
+  const list = normalizeUploadedFiles(files);
+  return list
     .map((file) => getFileUrl(file.filename))
     .filter((url): url is string => Boolean(url));
+};
+
+export const normalizeUploadedFiles = (
+  files: Express.Multer.File[] | Express.Multer.File | undefined
+): Express.Multer.File[] => {
+  if (!files) return [];
+  return Array.isArray(files) ? files : [files];
 };

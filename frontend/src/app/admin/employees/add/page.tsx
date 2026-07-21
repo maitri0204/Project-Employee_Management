@@ -3,13 +3,13 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { City, Country, State } from "country-state-city";
-import Navbar from "@/components/Navbar";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { employeeApi } from "@/lib/services";
-import { validateIdentityFields } from "@/lib/validation";
+import { mapApiErrorToField, validateEmployeeDocuments, validateEmployeeForm } from "@/lib/validation";
 import { ACCOUNT_TYPES, GENDER_OPTIONS, JOB_ROLES } from "@/constants/employee";
 import { Gender } from "@/types";
-import { Button, Card, FileInput, Input, Select } from "@/components/ui";
+import { Button, Card, FileInput, Input, MultiFileInput, Select } from "@/components/ui";
+import { useAutoDismiss } from "@/hooks/useAutoDismiss";
 
 const initialForm = {
   firstName: "",
@@ -46,11 +46,14 @@ export default function AddEmployeePage() {
     panCard?: File;
     cancelledCheque?: File;
     resume?: File;
-    degreeCertificates?: FileList;
+    degreeCertificates?: File[];
   }>({});
-  const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const router = useRouter();
+
+  useAutoDismiss(submitError, setSubmitError);
 
   const countries = useMemo(() => Country.getAllCountries(), []);
   const states = useMemo(
@@ -77,6 +80,29 @@ export default function AddEmployeePage() {
 
   const update = (field: string, value: string) => {
     setForm((prev) => ({ ...prev, [field]: value }));
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const clearFieldError = (field: string) => {
+    setFieldErrors((prev) => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
+
+  const updateFile = (
+    field: keyof typeof files,
+    value: File | File[] | undefined
+  ) => {
+    setFiles((prev) => ({ ...prev, [field]: value }));
+    clearFieldError(field);
   };
 
   const handleCountryChange = (isoCode: string) => {
@@ -89,6 +115,9 @@ export default function AddEmployeePage() {
       state: "",
       city: "",
     }));
+    clearFieldError("country");
+    clearFieldError("state");
+    clearFieldError("city");
   };
 
   const handleStateChange = (isoCode: string) => {
@@ -99,6 +128,8 @@ export default function AddEmployeePage() {
       state: selected?.name || "",
       city: "",
     }));
+    clearFieldError("state");
+    clearFieldError("city");
   };
 
   const handleCityChange = (cityName: string) => {
@@ -107,27 +138,21 @@ export default function AddEmployeePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
+    setFieldErrors({});
+    setSubmitError("");
     setIsSubmitting(true);
 
+    const validationErrors = {
+      ...validateEmployeeForm(form, countryCode, stateCode),
+      ...validateEmployeeDocuments(files),
+    };
+    if (Object.keys(validationErrors).length > 0) {
+      setFieldErrors(validationErrors);
+      setIsSubmitting(false);
+      return;
+    }
+
     try {
-      if (!/^\d{10}$/.test(form.phoneNumber)) {
-        setError("Phone number must be exactly 10 digits.");
-        setIsSubmitting(false);
-        return;
-      }
-
-      const identityError = validateIdentityFields({
-        panNumber: form.panNumber,
-        aadharNumber: form.aadharNumber,
-        ifscCode: form.ifscCode,
-      });
-      if (identityError) {
-        setError(identityError);
-        setIsSubmitting(false);
-        return;
-      }
-
       const formData = new FormData();
       Object.entries(form).forEach(([key, value]) => {
         if (value && key !== "phoneNumber") formData.append(key, value);
@@ -138,8 +163,8 @@ export default function AddEmployeePage() {
       if (files.panCard) formData.append("panCard", files.panCard);
       if (files.cancelledCheque) formData.append("cancelledCheque", files.cancelledCheque);
       if (files.resume) formData.append("resume", files.resume);
-      if (files.degreeCertificates) {
-        Array.from(files.degreeCertificates).forEach((file) => {
+      if (files.degreeCertificates?.length) {
+        files.degreeCertificates.forEach((file) => {
           formData.append("degreeCertificates", file);
         });
       }
@@ -147,7 +172,13 @@ export default function AddEmployeePage() {
       await employeeApi.create(formData);
       router.push("/admin/employees");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add employee");
+      const message = err instanceof Error ? err.message : "Failed to add employee";
+      const mapped = mapApiErrorToField(message);
+      if (mapped.submit) {
+        setSubmitError(mapped.submit);
+      } else {
+        setFieldErrors(mapped);
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -155,25 +186,28 @@ export default function AddEmployeePage() {
 
   return (
     <ProtectedRoute adminOnly>
-      <Navbar />
-      <main className="mx-auto max-w-4xl px-4 py-8">
-        <h1 className="mb-8 text-2xl font-bold text-text-primary">Add Employee</h1>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold text-black">Add Employee</h1>
+          <p className="mt-1 text-sm text-black">Fill in employee details and upload documents.</p>
+        </div>
 
         <Card>
-          {error && (
-            <div className="mb-6 rounded-lg bg-danger-bg px-4 py-3 text-sm text-danger">
-              {error}
+          {submitError && (
+            <div className="mb-6 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
+              {submitError}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-8">
             <section>
-              <h2 className="mb-4 text-lg font-semibold text-accent">Personal Information</h2>
+              <h2 className="mb-4 text-lg font-semibold text-blue-700">Personal Information</h2>
               <div className="grid gap-4 md:grid-cols-3">
                 <Input
                   label="First Name"
                   value={form.firstName}
                   onChange={(e) => update("firstName", e.target.value)}
+                  error={fieldErrors.firstName}
                   required
                 />
                 <Input
@@ -185,6 +219,7 @@ export default function AddEmployeePage() {
                   label="Last Name"
                   value={form.lastName}
                   onChange={(e) => update("lastName", e.target.value)}
+                  error={fieldErrors.lastName}
                   required
                 />
                 <Input
@@ -192,6 +227,7 @@ export default function AddEmployeePage() {
                   type="date"
                   value={form.dateOfBirth}
                   onChange={(e) => update("dateOfBirth", e.target.value)}
+                  error={fieldErrors.dateOfBirth}
                   required
                 />
                 <Select
@@ -210,6 +246,7 @@ export default function AddEmployeePage() {
                   label="Role"
                   value={form.jobRole}
                   onChange={(e) => update("jobRole", e.target.value)}
+                  error={fieldErrors.jobRole}
                   required
                 >
                   <option value="">Select role</option>
@@ -223,7 +260,7 @@ export default function AddEmployeePage() {
             </section>
 
             <section>
-              <h2 className="mb-4 text-lg font-semibold text-accent">Contact Details</h2>
+              <h2 className="mb-4 text-lg font-semibold text-blue-700">Contact Details</h2>
               <div className="grid gap-4 md:grid-cols-2">
                 <Input
                   label="Email address (personal)"
@@ -231,6 +268,7 @@ export default function AddEmployeePage() {
                   value={form.email}
                   onChange={(e) => update("email", e.target.value)}
                   placeholder="Used for OTP login"
+                  error={fieldErrors.email}
                   required
                 />
                 <div>
@@ -259,22 +297,30 @@ export default function AddEmployeePage() {
                       placeholder="10-digit number"
                       maxLength={10}
                       pattern="\d{10}"
-                      className="w-full rounded-lg border border-secondary-border bg-secondary px-3 py-2 text-sm text-text-primary outline-none transition-colors focus:border-accent focus:ring-2 focus:ring-accent-light"
+                      className={`w-full rounded-lg border bg-secondary px-3 py-2 text-sm text-text-primary outline-none transition-colors focus:ring-2 ${
+                        fieldErrors.phoneNumber
+                          ? "border-red-400 focus:border-red-500 focus:ring-red-100"
+                          : "border-secondary-border focus:border-accent focus:ring-accent-light"
+                      }`}
                       required
                     />
                   </div>
+                  {fieldErrors.phoneNumber && (
+                    <p className="mt-1 text-xs text-red-600">{fieldErrors.phoneNumber}</p>
+                  )}
                 </div>
               </div>
             </section>
 
             <section>
-              <h2 className="mb-4 text-lg font-semibold text-accent">Address</h2>
+              <h2 className="mb-4 text-lg font-semibold text-blue-700">Address</h2>
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="md:col-span-2">
                   <Input
                     label="Address line 1"
                     value={form.addressLine1}
                     onChange={(e) => update("addressLine1", e.target.value)}
+                    error={fieldErrors.addressLine1}
                     required
                   />
                 </div>
@@ -292,6 +338,7 @@ export default function AddEmployeePage() {
                   label="Country"
                   value={countryCode}
                   onChange={(e) => handleCountryChange(e.target.value)}
+                  error={fieldErrors.country}
                   required
                 >
                   <option value="">Select country</option>
@@ -305,6 +352,7 @@ export default function AddEmployeePage() {
                   label="State"
                   value={stateCode}
                   onChange={(e) => handleStateChange(e.target.value)}
+                  error={fieldErrors.state}
                   required
                   disabled={!countryCode}
                 >
@@ -319,6 +367,7 @@ export default function AddEmployeePage() {
                   label="City"
                   value={form.city}
                   onChange={(e) => handleCityChange(e.target.value)}
+                  error={fieldErrors.city}
                   required
                   disabled={!stateCode}
                 >
@@ -333,13 +382,14 @@ export default function AddEmployeePage() {
                   label="Pincode"
                   value={form.pincode}
                   onChange={(e) => update("pincode", e.target.value)}
+                  error={fieldErrors.pincode}
                   required
                 />
               </div>
             </section>
 
             <section>
-              <h2 className="mb-4 text-lg font-semibold text-accent">Identity & Bank Details</h2>
+              <h2 className="mb-4 text-lg font-semibold text-blue-700">Identity & Bank Details</h2>
               <div className="grid gap-4 md:grid-cols-2">
                 <Input
                   label="PAN Number"
@@ -352,6 +402,7 @@ export default function AddEmployeePage() {
                   }
                   placeholder="ABCDE1234F"
                   maxLength={10}
+                  error={fieldErrors.panNumber}
                   required
                 />
                 <Input
@@ -363,18 +414,21 @@ export default function AddEmployeePage() {
                   placeholder="12-digit number"
                   maxLength={12}
                   inputMode="numeric"
+                  error={fieldErrors.aadharNumber}
                   required
                 />
                 <Input
                   label="Bank Account Number"
                   value={form.bankAccountNumber}
                   onChange={(e) => update("bankAccountNumber", e.target.value)}
+                  error={fieldErrors.bankAccountNumber}
                   required
                 />
                 <Select
                   label="Type of Account"
                   value={form.accountType}
                   onChange={(e) => update("accountType", e.target.value)}
+                  error={fieldErrors.accountType}
                   required
                 >
                   <option value="">Select account type</option>
@@ -395,60 +449,69 @@ export default function AddEmployeePage() {
                   }
                   placeholder="ABCD0123456"
                   maxLength={11}
+                  error={fieldErrors.ifscCode}
                   required
                 />
                 <Input
                   label="Bank Name"
                   value={form.bankName}
                   onChange={(e) => update("bankName", e.target.value)}
+                  error={fieldErrors.bankName}
                   required
                 />
                 <Input
                   label="Bank Branch Name"
                   value={form.bankBranchName}
                   onChange={(e) => update("bankBranchName", e.target.value)}
+                  error={fieldErrors.bankBranchName}
                   required
                 />
               </div>
             </section>
 
             <section>
-              <h2 className="mb-4 text-lg font-semibold text-accent">Document Uploads</h2>
+              <h2 className="mb-4 text-lg font-semibold text-blue-700">Document Uploads</h2>
               <div className="grid gap-4 md:grid-cols-2">
                 <FileInput
                   label="Aadhar Card"
+                  error={fieldErrors.aadharCard}
+                  required
                   onChange={(e) =>
-                    setFiles((f) => ({ ...f, aadharCard: e.target.files?.[0] }))
+                    updateFile("aadharCard", e.target.files?.[0])
                   }
                 />
                 <FileInput
                   label="PAN Card"
+                  error={fieldErrors.panCard}
+                  required
                   onChange={(e) =>
-                    setFiles((f) => ({ ...f, panCard: e.target.files?.[0] }))
+                    updateFile("panCard", e.target.files?.[0])
                   }
                 />
                 <FileInput
                   label="Cancelled Cheque"
+                  error={fieldErrors.cancelledCheque}
+                  required
                   onChange={(e) =>
-                    setFiles((f) => ({ ...f, cancelledCheque: e.target.files?.[0] }))
+                    updateFile("cancelledCheque", e.target.files?.[0])
                   }
                 />
                 <FileInput
                   label="Resume"
+                  error={fieldErrors.resume}
+                  required
                   onChange={(e) =>
-                    setFiles((f) => ({ ...f, resume: e.target.files?.[0] }))
+                    updateFile("resume", e.target.files?.[0])
                   }
                 />
                 <div className="md:col-span-2">
-                  <FileInput
+                  <MultiFileInput
                     label="Degree Certificate (multiple allowed)"
-                    multiple
-                    onChange={(e) =>
-                      setFiles((f) => ({
-                        ...f,
-                        degreeCertificates: e.target.files || undefined,
-                      }))
-                    }
+                    error={fieldErrors.degreeCertificates}
+                    required
+                    files={files.degreeCertificates ?? []}
+                    onChange={(selected) => updateFile("degreeCertificates", selected)}
+                    maxFiles={10}
                   />
                 </div>
               </div>
@@ -471,7 +534,7 @@ export default function AddEmployeePage() {
             </div>
           </form>
         </Card>
-      </main>
+      </div>
     </ProtectedRoute>
   );
 }

@@ -1,8 +1,17 @@
 export type Role = "ADMIN" | "EMPLOYEE";
 export type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED";
-export type LeaveType = "PL" | "CL" | "SL";
+export type LeaveType = "PL" | "CL" | "SL" | "LWP";
 export type Gender = "MALE" | "FEMALE" | "OTHER" | "PREFER_NOT_TO_SAY";
 export type { JobRole, AccountType } from "@/constants/employee";
+
+export interface LeavePolicy {
+  id: string;
+  plMonthlyAllowance: number;
+  plRepeatMonthly: boolean;
+  annualCl: number;
+  annualSl: number;
+  updatedAt: string;
+}
 
 export interface LeaveBalance {
   id: string;
@@ -10,7 +19,65 @@ export interface LeaveBalance {
   pl: number;
   cl: number;
   sl: number;
+  lwpUsed?: number;
+  lastPlAccrualPeriod?: string | null;
+  lastClSlCreditFY?: string | null;
   updatedAt: string;
+}
+
+export interface LeaveUsageBreakdown {
+  PL: number;
+  CL: number;
+  SL: number;
+  LWP: number;
+}
+
+export interface ClHalfYearInfo {
+  available: number;
+  annualCl: number;
+  firstHalfMax: number;
+  secondHalfMax: number;
+  h1Used: number;
+  h2Used: number;
+  carriedFromH1: number;
+  currentHalf: "H1" | "H2";
+  totalUsed: number;
+  annualRemaining: number;
+}
+
+export interface LeaveBalanceSummary extends LeaveBalance {
+  joiningDate?: string;
+  financialYear?: string;
+  usage?: LeaveUsageBreakdown;
+  available?: { pl: number; cl: number; sl: number };
+  lwpTaken?: number;
+  clTotal?: number;
+  clUsableThisHalf?: number;
+  clHalfYear?: ClHalfYearInfo;
+  policy?: Pick<LeavePolicy, "plMonthlyAllowance" | "annualCl" | "annualSl">;
+}
+
+export interface EmployeeLeaveUsageRow {
+  employee: {
+    id: string;
+    firstName: string;
+    middleName?: string | null;
+    lastName: string;
+    joiningDate: string;
+    user?: { email: string };
+  } | null;
+  balance: { pl: number; cl: number; sl: number; lwpUsed: number };
+  usage: LeaveUsageBreakdown;
+  available: { pl: number; cl: number; sl: number };
+  clTotal?: number;
+  clUsableThisHalf?: number;
+  lwpTaken: number;
+}
+
+export interface LeaveDayBreakdown {
+  totalDays: number;
+  workingDays: number;
+  sandwichDays: number;
 }
 
 export interface Employee {
@@ -21,29 +88,35 @@ export interface Employee {
   lastName: string;
   dateOfBirth: string;
   gender: Gender;
-  jobRole: string;
-  addressLine1: string;
+  jobRole?: string | null;
+  joiningDate?: string;
+  addressLine1?: string | null;
   addressLine2?: string | null;
   addressLine3?: string | null;
-  country: string;
-  state: string;
-  city: string;
-  pincode: string;
+  country?: string | null;
+  state?: string | null;
+  city?: string | null;
+  pincode?: string | null;
   phone: string;
   panNumber: string;
   aadharNumber: string;
   bankAccountNumber: string;
-  accountType: string;
+  accountType?: string | null;
   ifscCode: string;
   bankName: string;
   bankBranchName: string;
   aadharCardUrl?: string | null;
   panCardUrl?: string | null;
   cancelledChequeUrl?: string | null;
-  degreeCertificateUrls: string[];
+  degreeCertificateUrls?: string[];
   resumeUrl?: string | null;
+  isArchived?: boolean;
   createdAt: string;
   updatedAt: string;
+  leaveUsage?: LeaveUsageBreakdown;
+  clTotal?: number;
+  clUsableThisHalf?: number;
+  lwpTaken?: number;
   user?: {
     id: string;
     email: string;
@@ -59,6 +132,8 @@ export interface LeaveRequest {
   startDate: string;
   endDate: string;
   reason: string;
+  days?: number | null;
+  sandwichDays?: number;
   status: LeaveStatus;
   adminNote?: string | null;
   createdAt: string;

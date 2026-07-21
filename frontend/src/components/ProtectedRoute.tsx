@@ -3,6 +3,8 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import AdminShell from "@/components/layout/AdminShell";
+import EmployeeShell from "@/components/layout/EmployeeShell";
 
 export default function ProtectedRoute({
   children,
@@ -25,8 +27,14 @@ export default function ProtectedRoute({
 
   if (isLoading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-primary">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-dark border-t-accent" />
+      <div className="flex min-h-screen items-center justify-center app-surface">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-blue-200 border-t-blue-600" />
+          <div>
+            <p className="text-base font-semibold text-black">Loading...</p>
+            <p className="text-sm text-black">Preparing your workspace.</p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -35,5 +43,11 @@ export default function ProtectedRoute({
     return null;
   }
 
-  return <>{children}</>;
+  const shell = user.role === "ADMIN" ? (
+    <AdminShell>{children}</AdminShell>
+  ) : (
+    <EmployeeShell>{children}</EmployeeShell>
+  );
+
+  return shell;
 }

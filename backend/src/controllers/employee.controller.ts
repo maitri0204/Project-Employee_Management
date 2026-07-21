@@ -1,7 +1,10 @@
 import { Request, Response } from "express";
 import prisma from "../config/database";
 import { JOB_ROLES } from "../constants/employee";
-import { getFileUrl, getFileUrls } from "../middleware/upload";
+import { getFileUrl, getFileUrls, normalizeUploadedFiles } from "../middleware/upload";
+import { getEffectiveJoiningDate } from "../services/leaveCalendar";
+import { initializeEmployeeLeaveBalance } from "../services/leaveAccrual";
+import { getEmployeeLeaveSummary } from "../services/leaveUsage";
 import { sendError, sendSuccess } from "../utils/response";
 import { validateIdentityFields, validateAadharNumber, validateIfscCode, validatePanNumber } from "../utils/validation";
 
@@ -105,6 +108,25 @@ export const createEmployee = async (req: Request, res: Response) => {
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
+    if (!files?.aadharCard?.[0]) {
+      return sendError(res, "Aadhar card document is required.");
+    }
+    if (!files?.panCard?.[0]) {
+      return sendError(res, "PAN card document is required.");
+    }
+    if (!files?.cancelledCheque?.[0]) {
+      return sendError(res, "Cancelled cheque document is required.");
+    }
+    if (!files?.resume?.[0]) {
+      return sendError(res, "Resume document is required.");
+    }
+    const degreeCertificates = normalizeUploadedFiles(files?.degreeCertificates);
+    if (!degreeCertificates.length) {
+      return sendError(res, "At least one degree certificate is required.");
+    }
+
+    const joiningDate = getEffectiveJoiningDate(new Date());
+
     const user = await prisma.user.create({
       data: {
         email: normalizedEmail,
@@ -132,11 +154,12 @@ export const createEmployee = async (req: Request, res: Response) => {
             ifscCode: ifscCode.trim().toUpperCase(),
             bankName,
             bankBranchName,
+            joiningDate,
             aadharCardUrl: getFileUrl(parseFile(files?.aadharCard)),
             panCardUrl: getFileUrl(parseFile(files?.panCard)),
             cancelledChequeUrl: getFileUrl(parseFile(files?.cancelledCheque)),
             resumeUrl: getFileUrl(parseFile(files?.resume)),
-            degreeCertificateUrls: getFileUrls(files?.degreeCertificates),
+            degreeCertificateUrls: getFileUrls(degreeCertificates),
           },
         },
       },
@@ -147,7 +170,16 @@ export const createEmployee = async (req: Request, res: Response) => {
       },
     });
 
-    return sendSuccess(res, "Employee added successfully.", user, 201);
+    if (user.employee) {
+      await initializeEmployeeLeaveBalance(user.employee.id);
+    }
+
+    const refreshed = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { employee: { include: { leaveBalance: true } } },
+    });
+
+    return sendSuccess(res, "Employee added successfully.", refreshed, 201);
   } catch (error) {
     console.error("Create employee error:", error);
     return sendError(res, "Failed to add employee.", 500);
@@ -157,6 +189,10 @@ export const createEmployee = async (req: Request, res: Response) => {
 export const getAllEmployees = async (_req: Request, res: Response) => {
   try {
     const employees = await prisma.employee.findMany({
+      where: {
+        NOT: { isArchived: true },
+        user: { role: "EMPLOYEE" },
+      },
       include: {
         user: {
           select: { id: true, email: true, role: true },
@@ -194,7 +230,15 @@ export const getEmployeeById = async (req: Request, res: Response) => {
       return sendError(res, "Employee not found.", 404);
     }
 
-    return sendSuccess(res, "Employee fetched successfully.", employee);
+    const leaveSummary = await getEmployeeLeaveSummary(id);
+
+    return sendSuccess(res, "Employee fetched successfully.", {
+      ...employee,
+      leaveUsage: leaveSummary.usage,
+      clTotal: leaveSummary.clTotal,
+      clUsableThisHalf: leaveSummary.clUsableThisHalf,
+      lwpTaken: leaveSummary.lwpTaken,
+    });
   } catch (error) {
     console.error("Get employee error:", error);
     return sendError(res, "Failed to fetch employee.", 500);
@@ -229,6 +273,7 @@ export const updateEmployee = async (req: Request, res: Response) => {
     } = req.body;
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+    const degreeCertificates = normalizeUploadedFiles(files?.degreeCertificates);
 
     if (panNumber) {
       const panError = validatePanNumber(panNumber);
@@ -279,8 +324,8 @@ export const updateEmployee = async (req: Request, res: Response) => {
         ...(files?.resume && {
           resumeUrl: getFileUrl(parseFile(files.resume)),
         }),
-        ...(files?.degreeCertificates && {
-          degreeCertificateUrls: getFileUrls(files.degreeCertificates),
+        ...(degreeCertificates.length > 0 && {
+          degreeCertificateUrls: getFileUrls(degreeCertificates),
         }),
       },
       include: {
@@ -298,35 +343,36 @@ export const updateEmployee = async (req: Request, res: Response) => {
   }
 };
 
-export const updateLeaveBalance = async (req: Request, res: Response) => {
+export const archiveEmployee = async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
-    const { pl, cl, sl } = req.body;
 
-    const employee = await prisma.employee.findUnique({ where: { id } });
+    const employee = await prisma.employee.findUnique({
+      where: { id },
+      include: { user: { select: { role: true } } },
+    });
+
     if (!employee) {
       return sendError(res, "Employee not found.", 404);
     }
 
-    const balance = await prisma.leaveBalance.upsert({
-      where: { employeeId: id },
-      update: {
-        ...(pl !== undefined && { pl: parseInt(pl) }),
-        ...(cl !== undefined && { cl: parseInt(cl) }),
-        ...(sl !== undefined && { sl: parseInt(sl) }),
-      },
-      create: {
-        employeeId: id,
-        pl: parseInt(pl) || 0,
-        cl: parseInt(cl) || 0,
-        sl: parseInt(sl) || 0,
-      },
+    if (employee.user.role !== "EMPLOYEE") {
+      return sendError(res, "Only employees can be archived.");
+    }
+
+    if (employee.isArchived === true) {
+      return sendError(res, "Employee is already archived.");
+    }
+
+    await prisma.employee.update({
+      where: { id },
+      data: { isArchived: true },
     });
 
-    return sendSuccess(res, "Leave balance updated successfully.", balance);
+    return sendSuccess(res, "Employee archived successfully.");
   } catch (error) {
-    console.error("Update leave balance error:", error);
-    return sendError(res, "Failed to update leave balance.", 500);
+    console.error("Archive employee error:", error);
+    return sendError(res, "Failed to archive employee.", 500);
   }
 };
 
