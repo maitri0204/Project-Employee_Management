@@ -133,9 +133,32 @@ export default function LeavesPage() {
       .catch(() => setDayPreview(null));
   }, [formData.startDate, formData.endDate]);
 
+  const sanitizeBreakdownInput = (value: string): number => {
+    const digitsOnly = value.replace(/\D/g, "");
+    if (digitsOnly === "") return 0;
+    const parsed = parseInt(digitsOnly, 10);
+    if (!Number.isFinite(parsed)) return 0;
+    if (requiredDays > 0) return Math.min(parsed, requiredDays);
+    return parsed;
+  };
+
   const updateBreakdown = (type: LeaveType, value: string) => {
-    const days = value === "" ? 0 : Math.max(0, parseInt(value, 10) || 0);
-    setLeaveBreakdown((prev) => ({ ...prev, [type]: days }));
+    setLeaveBreakdown((prev) => ({ ...prev, [type]: sanitizeBreakdownInput(value) }));
+  };
+
+  const handleBreakdownKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    const allowed = ["Backspace", "Delete", "Tab", "ArrowLeft", "ArrowRight", "Home", "End"];
+    if (allowed.includes(e.key) || e.ctrlKey || e.metaKey) return;
+    if (!/^\d$/.test(e.key)) e.preventDefault();
+  };
+
+  const handleBreakdownPaste = (
+    e: React.ClipboardEvent<HTMLInputElement>,
+    type: LeaveType
+  ) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text");
+    updateBreakdown(type, pasted);
   };
 
   const resetForm = () => {
@@ -357,11 +380,16 @@ export default function LeavesPage() {
                               {LEAVE_TYPE_LABELS[type]}
                             </label>
                             <input
-                              type="number"
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              autoComplete="off"
                               min={0}
                               max={requiredDays}
                               value={leaveBreakdown[type] === 0 ? "" : leaveBreakdown[type]}
                               onChange={(e) => updateBreakdown(type, e.target.value)}
+                              onKeyDown={handleBreakdownKeyDown}
+                              onPaste={(e) => handleBreakdownPaste(e, type)}
                               placeholder="0"
                               className={`w-full rounded-lg border bg-white px-3 py-2 text-sm text-black outline-none focus:ring-2 ${
                                 exceeds
