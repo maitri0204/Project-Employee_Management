@@ -4,8 +4,9 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ClipboardList, UserPlus, Users } from "lucide-react";
-import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
+import { useLeaveNotifications } from "@/context/LeaveNotificationContext";
+import ProtectedRoute from "@/components/ProtectedRoute";
 import { employeeApi, leaveApi } from "@/lib/services";
 import { GENDER_OPTIONS } from "@/constants/employee";
 import { formatUsedTotal, getLeaveTotals } from "@/lib/leaveFormat";
@@ -18,17 +19,12 @@ function formatName(first?: string, middle?: string | null, last?: string) {
 
 function AdminDashboard() {
   const { user } = useAuth();
+  const { pendingCount } = useLeaveNotifications();
   const [employeeCount, setEmployeeCount] = useState(0);
-  const [pendingLeaves, setPendingLeaves] = useState(0);
 
   useEffect(() => {
     employeeApi.getAll(false).then((res) => {
       if (res.data) setEmployeeCount(res.data.length);
-    });
-    leaveApi.getAll().then((res) => {
-      if (res.data) {
-        setPendingLeaves(res.data.filter((r) => r.status === "PENDING").length);
-      }
     });
   }, []);
 
@@ -67,7 +63,7 @@ function AdminDashboard() {
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <StatCard label="Total Employees" value={employeeCount} />
-        <StatCard label="Pending Leave Requests" value={pendingLeaves} accentClass="text-amber-600" />
+        <StatCard label="Pending Leave Requests" value={pendingCount} accentClass="text-amber-600" />
         <StatCard label="Your Role" value="Admin" accentClass="text-blue-700" />
       </div>
 

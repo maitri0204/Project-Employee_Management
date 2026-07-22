@@ -21,6 +21,7 @@ import {
   validateLeaveBreakdownApproval,
   deductApprovedLeaveBreakdown,
 } from "../services/leaveApplication";
+import { leaveNotificationHub } from "../services/leaveNotificationHub";
 
 export const previewLeaveDays = async (req: Request, res: Response) => {
   try {
@@ -122,6 +123,8 @@ export const applyLeave = async (req: Request, res: Response) => {
         sandwichDays,
       },
     });
+
+    void leaveNotificationHub.broadcast("NEW_REQUEST");
 
     return sendSuccess(
       res,
@@ -300,6 +303,42 @@ export const getAllLeaveRequests = async (_req: Request, res: Response) => {
   }
 };
 
+export const getPendingLeaveCount = async (_req: Request, res: Response) => {
+  try {
+    const pendingCount = await leaveNotificationHub.getPendingCount();
+    return sendSuccess(res, "Pending leave count fetched successfully.", { pendingCount });
+  } catch (error) {
+    console.error("Get pending leave count error:", error);
+    return sendError(res, "Failed to fetch pending leave count.", 500);
+  }
+};
+
+export const streamLeaveNotifications = async (req: Request, res: Response) => {
+  const heartbeatMs = 30_000;
+
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache, no-transform");
+  res.setHeader("Connection", "keep-alive");
+  res.setHeader("X-Accel-Buffering", "no");
+
+  if (typeof res.flushHeaders === "function") {
+    res.flushHeaders();
+  }
+
+  leaveNotificationHub.subscribe(res);
+
+  void leaveNotificationHub.sendToClient(res, "INIT");
+
+  const heartbeat = setInterval(() => {
+    res.write(": keepalive\n\n");
+  }, heartbeatMs);
+
+  req.on("close", () => {
+    clearInterval(heartbeat);
+    leaveNotificationHub.unsubscribe(res);
+  });
+};
+
 export const updateLeaveStatus = async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
@@ -376,6 +415,8 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
         },
       },
     });
+
+    void leaveNotificationHub.broadcast("COUNT_UPDATED");
 
     return sendSuccess(res, `Leave request ${status.toLowerCase()} successfully.`, updated);
   } catch (error) {

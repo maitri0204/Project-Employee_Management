@@ -13,6 +13,8 @@ import {
   Users,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
+import { useLeaveNotifications } from "@/context/LeaveNotificationContext";
+import LeaveNotificationBadge from "@/components/LeaveNotificationBadge";
 
 type NavItem = {
   label: string;
@@ -66,6 +68,7 @@ function formatName(first?: string, middle?: string | null, last?: string) {
 
 export default function AdminShell({ children }: { children: React.ReactNode }) {
   const { user, logout } = useAuth();
+  const { pendingCount } = useLeaveNotifications();
   const pathname = usePathname();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -118,6 +121,18 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
 
         <div className="flex-1" />
 
+        {pendingCount > 0 && (
+          <Link
+            href="/admin/leaves"
+            className="relative mr-1 flex items-center gap-2 rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 transition hover:bg-amber-100 sm:mr-3"
+            title="Pending leave requests"
+          >
+            <ClipboardList className="h-4 w-4 text-amber-600" />
+            <span className="hidden sm:inline">Leave requests</span>
+            <LeaveNotificationBadge count={pendingCount} pulse />
+          </Link>
+        )}
+
         <div className="mr-1 flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-cyan-400 text-sm font-bold text-white shadow sm:mr-4 sm:h-12 sm:w-12">
           {initials}
         </div>
@@ -152,7 +167,10 @@ export default function AdminShell({ children }: { children: React.ReactNode }) 
                 <span className={active ? "text-blue-600" : "text-gray-400"}>
                   {item.icon}
                 </span>
-                <span>{item.label}</span>
+                <span className="flex-1">{item.label}</span>
+                {item.href === "/admin/leaves" && (
+                  <LeaveNotificationBadge count={pendingCount} />
+                )}
               </Link>
             );
           })}

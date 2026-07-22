@@ -3,18 +3,28 @@ import { AuthRequest, Role } from "../types";
 import { verifyToken } from "../utils/jwt";
 import { sendError } from "../utils/response";
 
+function extractToken(req: Request): string | null {
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith("Bearer ")) {
+    return authHeader.split(" ")[1];
+  }
+  const queryToken = req.query.token;
+  if (typeof queryToken === "string" && queryToken.length > 0) {
+    return queryToken;
+  }
+  return null;
+}
+
 export const authenticate = (
   req: Request,
   res: Response,
   next: NextFunction
 ) => {
-  const authHeader = req.headers.authorization;
+  const token = extractToken(req);
 
-  if (!authHeader?.startsWith("Bearer ")) {
+  if (!token) {
     return sendError(res, "Access denied. No token provided.", 401);
   }
-
-  const token = authHeader.split(" ")[1];
 
   try {
     const decoded = verifyToken(token);
@@ -24,6 +34,9 @@ export const authenticate = (
     return sendError(res, "Invalid or expired token.", 401);
   }
 };
+
+/** Supports Bearer header or `?token=` for SSE (EventSource cannot set headers). */
+export const authenticateFromQueryOrHeader = authenticate;
 
 export const authorize = (...roles: Role[]) => {
   return (req: Request, res: Response, next: NextFunction) => {

@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import LeaveNotificationBadge from "@/components/LeaveNotificationBadge";
+import { useLeaveNotifications } from "@/context/LeaveNotificationContext";
 import { leaveApi } from "@/lib/services";
 import { formatLeaveBreakdownLabel } from "@/lib/leaveBreakdown";
 import { formatUsedTotal, getLeaveTotals } from "@/lib/leaveFormat";
@@ -28,6 +30,7 @@ function formatReqName(req: LeaveRequest) {
 }
 
 export default function AdminLeavesPage() {
+  const { pendingCount, revision } = useLeaveNotifications();
   const [tab, setTab] = useState<"usage" | "requests">("usage");
   const [usageData, setUsageData] = useState<{
     financialYear: string;
@@ -57,6 +60,13 @@ export default function AdminLeavesPage() {
     fetchUsage();
     fetchRequests();
   }, []);
+
+  useEffect(() => {
+    if (revision > 0) {
+      fetchRequests();
+      fetchUsage();
+    }
+  }, [revision]);
 
   const handleStatusUpdate = async (id: string, status: "APPROVED" | "REJECTED") => {
     setProcessingId(id);
@@ -99,11 +109,15 @@ export default function AdminLeavesPage() {
           <button
             type="button"
             onClick={() => setTab("requests")}
-            className={`rounded-lg px-4 py-2 text-sm font-medium ${
+            className={`inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium ${
               tab === "requests" ? "bg-blue-600 text-white" : "bg-slate-100 text-black"
             }`}
           >
             Leave Requests
+            <LeaveNotificationBadge
+              count={pendingCount}
+              className={tab === "requests" ? "bg-white text-amber-700 ring-blue-500" : ""}
+            />
           </button>
         </div>
 
