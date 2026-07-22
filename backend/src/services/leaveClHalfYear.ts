@@ -38,16 +38,23 @@ function overlapLeaveDays(
 
 type ClRequestRow = { startDate: Date; endDate: Date };
 
+type FetchClOptions = {
+  excludeRequestId?: string;
+  /** When true, pending requests count toward limits (apply/approve validation). */
+  includePending?: boolean;
+};
+
 async function fetchClRequests(
   employeeId: string,
-  excludeRequestId?: string
+  options: FetchClOptions = {}
 ): Promise<ClRequestRow[]> {
+  const statuses = options.includePending ? ["APPROVED", "PENDING"] : ["APPROVED"];
   return prisma.leaveRequest.findMany({
     where: {
       employeeId,
       leaveType: "CL",
-      status: { in: ["APPROVED", "PENDING"] },
-      ...(excludeRequestId ? { NOT: { id: excludeRequestId } } : {}),
+      status: { in: statuses },
+      ...(options.excludeRequestId ? { NOT: { id: options.excludeRequestId } } : {}),
     },
     select: { startDate: true, endDate: true },
   });
@@ -74,9 +81,9 @@ export async function getClDaysInHalf(
   employeeId: string,
   startYear: number,
   half: FinancialHalf,
-  excludeRequestId?: string
+  options: FetchClOptions = {}
 ): Promise<number> {
-  const requests = await fetchClRequests(employeeId, excludeRequestId);
+  const requests = await fetchClRequests(employeeId, options);
   return sumClDaysInHalf(requests, startYear, half);
 }
 
@@ -145,10 +152,10 @@ export async function getClHalfYearInfo(
   employeeId: string,
   annualCl: number,
   referenceDate = new Date(),
-  excludeRequestId?: string
+  options: FetchClOptions = {}
 ): Promise<ClHalfYearInfo> {
   const { startYear } = getFinancialYear(referenceDate);
-  const requests = await fetchClRequests(employeeId, excludeRequestId);
+  const requests = await fetchClRequests(employeeId, options);
   const h1Used = sumClDaysInHalf(requests, startYear, "H1");
   const h2Used = sumClDaysInHalf(requests, startYear, "H2");
   return buildClHalfYearInfo(annualCl, h1Used, h2Used, referenceDate);
@@ -172,7 +179,10 @@ export async function validateClLeaveRequest(
   const firstHalfMax = Math.floor(annualCl / 2);
   const secondHalfMax = annualCl - firstHalfMax;
 
-  const requests = await fetchClRequests(employeeId, excludeRequestId);
+  const requests = await fetchClRequests(employeeId, {
+    includePending: true,
+    excludeRequestId,
+  });
   const h1Used = sumClDaysInHalf(requests, startYear, "H1");
   const h2Used = sumClDaysInHalf(requests, startYear, "H2");
 

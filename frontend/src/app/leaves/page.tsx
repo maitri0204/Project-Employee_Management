@@ -48,6 +48,7 @@ export default function LeavesPage() {
     reason: "",
   });
   const [dayPreview, setDayPreview] = useState<LeaveDayBreakdown | null>(null);
+  const [sandwichConfirm, setSandwichConfirm] = useState<LeaveDayBreakdown | null>(null);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -101,14 +102,14 @@ export default function LeavesPage() {
       .catch(() => setDayPreview(null));
   }, [formData.startDate, formData.endDate]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const submitLeave = async () => {
     setError("");
     setIsSubmitting(true);
 
     try {
       await leaveApi.apply(formData);
       setShowForm(false);
+      setSandwichConfirm(null);
       setFormData({ leaveType: "PL", startDate: "", endDate: "", reason: "" });
       setDayPreview(null);
       await loadOverview(calYear, calMonth, false);
@@ -117,6 +118,22 @@ export default function LeavesPage() {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!dayPreview || dayPreview.totalDays === 0) {
+      setError("Please select valid leave dates with at least one working day.");
+      return;
+    }
+
+    if (dayPreview.sandwichDays > 0) {
+      setSandwichConfirm(dayPreview);
+      return;
+    }
+
+    await submitLeave();
   };
 
   if (pageLoading) {
@@ -245,11 +262,16 @@ export default function LeavesPage() {
               />
               {dayPreview && dayPreview.totalDays > 0 && (
                 <div className="md:col-span-2 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 text-sm text-blue-900">
-                  <strong>{dayPreview.totalDays} leave day(s)</strong> will be deducted
+                  <strong>{dayPreview.totalDays} leave day(s)</strong> will be used if approved
                   {dayPreview.sandwichDays > 0 && (
-                    <span> (includes {dayPreview.sandwichDays} sandwich holiday day(s))</span>
+                    <span>
+                      {" "}
+                      (includes {dayPreview.sandwichDays} sandwich holiday day
+                      {dayPreview.sandwichDays > 1 ? "s" : ""} between your leave dates)
+                    </span>
                   )}
-                  . Working days in range: {dayPreview.workingDays}.
+                  . Working days selected: {dayPreview.workingDays}. Balance is reduced only after
+                  admin approval.
                 </div>
               )}
               <div className="md:col-span-2">
@@ -325,6 +347,61 @@ export default function LeavesPage() {
           </div>
         </div>
       </div>
+
+      {sandwichConfirm && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-900/50 p-4 backdrop-blur-sm">
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="sandwich-dialog-title"
+            className="w-full max-w-md rounded-2xl border border-amber-200 bg-white p-6 shadow-2xl"
+          >
+            <h2 id="sandwich-dialog-title" className="text-lg font-bold text-amber-900">
+              Sandwich leave applies
+            </h2>
+            <p className="mt-2 text-sm text-slate-600">
+              Holidays or weekly offs fall between your selected leave dates. Those days will also be
+              counted as leave (sandwich rule).
+            </p>
+            <ul className="mt-4 space-y-2 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-950">
+              <li>
+                <strong>Working days you selected:</strong> {sandwichConfirm.workingDays}
+              </li>
+              <li>
+                <strong>
+                  Holiday/weekend day{sandwichConfirm.sandwichDays > 1 ? "s" : ""} in between:
+                </strong>{" "}
+                {sandwichConfirm.sandwichDays}
+              </li>
+              <li className="border-t border-amber-200/80 pt-2 text-base font-bold">
+                Total leave days if approved: {sandwichConfirm.totalDays}
+              </li>
+            </ul>
+            <p className="mt-3 text-xs text-slate-500">
+              Your leave balance will be reduced only after the admin approves this request. If
+              rejected, no days will be deducted.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-end gap-3">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setSandwichConfirm(null)}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={() => void submitLeave()}
+                disabled={isSubmitting}
+                className="bg-amber-600 hover:bg-amber-700"
+              >
+                {isSubmitting ? "Submitting..." : "Proceed"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </ProtectedRoute>
   );
 }

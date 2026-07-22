@@ -7,6 +7,7 @@ import { getFinancialYear, parseDateOnly } from "../services/leaveCalendar";
 import { getLeavePolicy } from "../services/leavePolicy";
 import { refreshEmployeeLeaveBalances } from "../services/leaveSync";
 import { validateClLeaveRequest, getClHalfYearInfo } from "../services/leaveClHalfYear";
+import { getPendingLeaveDays } from "../services/leavePending";
 import {
   getAllEmployeesLeaveUsage,
   getEmployeeLeaveSummary,
@@ -88,7 +89,9 @@ export const applyLeave = async (req: Request, res: Response) => {
 
       if (leaveType === "CL") {
         const policy = await getLeavePolicy();
-        const clInfo = await getClHalfYearInfo(refreshed.id, policy.annualCl);
+        const clInfo = await getClHalfYearInfo(refreshed.id, policy.annualCl, new Date(), {
+          includePending: true,
+        });
 
         const clCheck = await validateClLeaveRequest(
           refreshed.id,
@@ -105,7 +108,7 @@ export const applyLeave = async (req: Request, res: Response) => {
             sandwichDays > 0 ? ` (includes ${sandwichDays} sandwich day(s))` : "";
           return sendError(
             res,
-            `Insufficient CL balance. Required: ${totalDays}${sandwichNote}. Annual remaining: ${clInfo.annualRemaining} day(s).`
+            `Insufficient CL balance. Required: ${totalDays}${sandwichNote}. Available after pending requests: ${clInfo.annualRemaining} day(s). Leave is deducted only after admin approval.`
           );
         }
 
@@ -113,21 +116,28 @@ export const applyLeave = async (req: Request, res: Response) => {
           const halfLabel = clInfo.currentHalf === "H1" ? "Apr–Sep" : "Oct–Mar";
           return sendError(
             res,
-            `You can use only ${clInfo.available} CL day(s) in ${halfLabel} (half-year limit).`
+            `You can use only ${clInfo.available} CL day(s) in ${halfLabel} (half-year limit). Leave is deducted only after admin approval.`
           );
         }
       } else {
+        const pendingSameType = await getPendingLeaveDays(
+          refreshed.id,
+          leaveType as LeaveType
+        );
         const balanceMap: Record<string, number> = {
           PL: balance.pl,
           SL: balance.sl,
         };
+        const available = balanceMap[leaveType] - pendingSameType;
 
-        if (totalDays > balanceMap[leaveType]) {
+        if (totalDays > available) {
           const sandwichNote =
             sandwichDays > 0 ? ` (includes ${sandwichDays} sandwich day(s))` : "";
+          const pendingNote =
+            pendingSameType > 0 ? ` (${pendingSameType} day(s) already in pending requests)` : "";
           return sendError(
             res,
-            `Insufficient ${leaveType} leave balance. Required: ${totalDays}${sandwichNote}. Available: ${balanceMap[leaveType]} days.`
+            `Insufficient ${leaveType} leave balance. Required: ${totalDays}${sandwichNote}. Available: ${Math.max(0, available)} day(s)${pendingNote}. Leave is deducted only after admin approval.`
           );
         }
       }
@@ -147,7 +157,7 @@ export const applyLeave = async (req: Request, res: Response) => {
 
     return sendSuccess(
       res,
-      `Leave request submitted for ${totalDays} day(s).`,
+      `Leave request submitted for ${totalDays} day(s). Balance will be updated after admin approval.`,
       leaveRequest,
       201
     );
@@ -399,11 +409,19 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
         const field = fieldMap[leaveRequest.leaveType];
         if (field === "cl") {
           // CL balance validated above via half-year rules; sync after approval.
-        } else if (field && balance[field] < days) {
-          return sendError(
-            res,
-            `Insufficient ${leaveRequest.leaveType} balance to approve (${days} days required).`
+        } else if (field) {
+          const pendingOther = await getPendingLeaveDays(
+            employee.id,
+            leaveRequest.leaveType as LeaveType,
+            leaveRequest.id
           );
+          const available = balance[field] - pendingOther;
+          if (days > available) {
+            return sendError(
+              res,
+              `Insufficient ${leaveRequest.leaveType} balance to approve (${days} days required, ${Math.max(0, available)} available).`
+            );
+          }
         }
 
         if (field) {
