@@ -2,6 +2,22 @@ import { ApiResponse } from "@/types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
 
+export function getAuthToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("token");
+}
+
+export async function fetchWithAuth(endpoint: string, init?: RequestInit): Promise<Response> {
+  const token = getAuthToken();
+  return fetch(`${API_URL}${endpoint}`, {
+    ...init,
+    headers: {
+      ...(init?.headers ?? {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  });
+}
+
 class ApiClient {
   private getToken(): string | null {
     if (typeof window === "undefined") return null;

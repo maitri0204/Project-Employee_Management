@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { leaveApi } from "@/lib/services";
+import { formatUsedTotal, getLeaveTotals } from "@/lib/leaveFormat";
 import { EmployeeLeaveUsageRow, LeaveRequest } from "@/types";
 import { Badge, Button, Card } from "@/components/ui";
 
@@ -15,13 +16,13 @@ const statusVariant = {
 
 function formatName(row: EmployeeLeaveUsageRow) {
   const e = row.employee;
-  if (!e) return "—";
+  if (!e) return "-";
   return [e.firstName, e.middleName, e.lastName].filter(Boolean).join(" ");
 }
 
 function formatReqName(req: LeaveRequest) {
   const e = req.employee;
-  if (!e) return "—";
+  if (!e) return "-";
   return [e.firstName, e.middleName, e.lastName].filter(Boolean).join(" ");
 }
 
@@ -79,8 +80,8 @@ export default function AdminLeavesPage() {
               Track leave usage per employee and manage requests.
             </p>
           </div>
-          <Link href="/admin/leave-policy">
-            <Button variant="secondary">Edit Company Policy</Button>
+          <Link href="/admin/leave-assign">
+            <Button variant="secondary">Edit Leave Assign</Button>
           </Link>
         </div>
 
@@ -117,9 +118,9 @@ export default function AdminLeavesPage() {
                 <thead className="border-b border-slate-200 bg-slate-50">
                   <tr>
                     <th className="px-6 py-3 font-medium text-black">Employee</th>
-                    <th className="px-6 py-3 font-medium text-black">PL (avail / used)</th>
-                    <th className="px-6 py-3 font-medium text-black">CL (total / used)</th>
-                    <th className="px-6 py-3 font-medium text-black">SL (avail / used)</th>
+                    <th className="px-6 py-3 font-medium text-black">PL (used/total)</th>
+                    <th className="px-6 py-3 font-medium text-black">CL (used/total)</th>
+                    <th className="px-6 py-3 font-medium text-black">SL (used/total)</th>
                     <th className="px-6 py-3 font-medium text-black">LWP Taken</th>
                   </tr>
                 </thead>
@@ -131,19 +132,19 @@ export default function AdminLeavesPage() {
                       </td>
                     </tr>
                   ) : (
-                    usageData.employees.map((row) => (
+                    usageData.employees.map((row) => {
+                      const totals = getLeaveTotals(row);
+                      return (
                       <tr key={row.employee?.id} className="hover:bg-slate-50">
                         <td className="px-6 py-4">
                           <p className="font-medium text-black">{formatName(row)}</p>
                           <p className="text-xs text-slate-500">{row.employee?.user?.email}</p>
                         </td>
                         <td className="px-6 py-4 text-black">
-                          {row.available.pl} / {row.usage.PL}
+                          {formatUsedTotal(row.usage.PL, totals.PL)}
                         </td>
                         <td className="px-6 py-4 text-black">
-                          <span>
-                            {row.clTotal ?? row.available.cl + row.usage.CL} / {row.usage.CL}
-                          </span>
+                          <span>{formatUsedTotal(row.usage.CL, totals.CL)}</span>
                           {row.clUsableThisHalf !== undefined && (
                             <span className="block text-xs text-slate-500">
                               Usable this half: {row.clUsableThisHalf}
@@ -151,11 +152,11 @@ export default function AdminLeavesPage() {
                           )}
                         </td>
                         <td className="px-6 py-4 text-black">
-                          {row.available.sl} / {row.usage.SL}
+                          {formatUsedTotal(row.usage.SL, totals.SL)}
                         </td>
                         <td className="px-6 py-4 font-medium text-amber-700">{row.lwpTaken}</td>
                       </tr>
-                    ))
+                    )})
                   )}
                 </tbody>
               </table>
@@ -195,7 +196,7 @@ export default function AdminLeavesPage() {
                           {new Date(req.startDate).toLocaleDateString()} –{" "}
                           {new Date(req.endDate).toLocaleDateString()}
                         </td>
-                        <td className="px-6 py-4 text-black">{req.days ?? "—"}</td>
+                        <td className="px-6 py-4 text-black">{req.days ?? "-"}</td>
                         <td className="px-6 py-4 text-black">{req.reason}</td>
                         <td className="px-6 py-4">
                           <Badge variant={statusVariant[req.status]}>{req.status}</Badge>

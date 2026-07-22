@@ -16,11 +16,26 @@ const DEFAULT_POLICY = {
   annualSl: 0,
 };
 
-export async function getLeavePolicy(): Promise<LeavePolicyData> {
-  const existing = await prisma.leavePolicy.findFirst();
-  if (existing) return existing;
+let cachedPolicy: LeavePolicyData | null = null;
+let cacheLoadedAt = 0;
+const CACHE_TTL_MS = 60_000;
 
-  return prisma.leavePolicy.create({ data: DEFAULT_POLICY });
+export function invalidateLeavePolicyCache(): void {
+  cachedPolicy = null;
+  cacheLoadedAt = 0;
+}
+
+export async function getLeavePolicy(): Promise<LeavePolicyData> {
+  const now = Date.now();
+  if (cachedPolicy && now - cacheLoadedAt < CACHE_TTL_MS) {
+    return cachedPolicy;
+  }
+
+  const existing = await prisma.leavePolicy.findFirst();
+  const policy = existing ?? (await prisma.leavePolicy.create({ data: DEFAULT_POLICY }));
+  cachedPolicy = policy;
+  cacheLoadedAt = now;
+  return policy;
 }
 
 export async function updateLeavePolicy(data: {
@@ -30,7 +45,7 @@ export async function updateLeavePolicy(data: {
   annualSl?: number;
 }): Promise<LeavePolicyData> {
   const policy = await getLeavePolicy();
-  return prisma.leavePolicy.update({
+  const updated = await prisma.leavePolicy.update({
     where: { id: policy.id },
     data: {
       ...(data.plMonthlyAllowance !== undefined && {
@@ -41,4 +56,7 @@ export async function updateLeavePolicy(data: {
       ...(data.annualSl !== undefined && { annualSl: Math.max(0, data.annualSl) }),
     },
   });
+  cachedPolicy = updated;
+  cacheLoadedAt = Date.now();
+  return updated;
 }

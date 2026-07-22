@@ -1,9 +1,18 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { CalendarDays, ClipboardList, Plane } from "lucide-react";
 import ProtectedRoute from "@/components/ProtectedRoute";
-import { leaveApi } from "@/lib/services";
-import { LeaveBalanceSummary, LeaveDayBreakdown, LeaveRequest, LeaveType } from "@/types";
+import LeaveCalendar from "@/components/LeaveCalendar";
+import { calendarApi, leaveApi } from "@/lib/services";
+import {
+  CalendarMonthData,
+  LeaveBalanceSummary,
+  LeaveDayBreakdown,
+  LeaveRequest,
+  LeaveType,
+} from "@/types";
+import { formatUsedTotal, getLeaveTotals } from "@/lib/leaveFormat";
 import { Badge, Button, Card, Input, Select, Textarea } from "@/components/ui";
 import { useAutoDismiss } from "@/hooks/useAutoDismiss";
 
@@ -13,8 +22,24 @@ const statusVariant = {
   REJECTED: "danger" as const,
 };
 
+const BALANCE_STYLES = [
+  { type: "PL" as const, gradient: "from-blue-500 to-indigo-600", light: "bg-blue-50 text-blue-700" },
+  { type: "CL" as const, gradient: "from-emerald-500 to-teal-600", light: "bg-emerald-50 text-emerald-700" },
+  { type: "SL" as const, gradient: "from-amber-500 to-orange-500", light: "bg-amber-50 text-amber-700" },
+];
+
 export default function LeavesPage() {
+  const today = new Date();
+  const [calYear, setCalYear] = useState(today.getFullYear());
+  const [calMonth, setCalMonth] = useState(today.getMonth() + 1);
+
   const [requests, setRequests] = useState<LeaveRequest[]>([]);
+  const [balance, setBalance] = useState<LeaveBalanceSummary | null>(null);
+  const [calendar, setCalendar] = useState<CalendarMonthData | null>(null);
+
+  const [pageLoading, setPageLoading] = useState(true);
+  const [calendarLoading, setCalendarLoading] = useState(false);
+
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     leaveType: "PL" as LeaveType,
@@ -23,24 +48,44 @@ export default function LeavesPage() {
     reason: "",
   });
   const [dayPreview, setDayPreview] = useState<LeaveDayBreakdown | null>(null);
-  const [balance, setBalance] = useState<LeaveBalanceSummary | null>(null);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useAutoDismiss(error, setError);
 
-  const fetchRequests = () => {
-    leaveApi.getMyRequests().then((res) => {
-      if (res.data) setRequests(res.data);
-    });
-  };
+  const loadOverview = useCallback(async (year: number, month: number, initial = false) => {
+    if (initial) setPageLoading(true);
+    else setCalendarLoading(true);
+
+    try {
+      const res = await leaveApi.getMyOverview(year, month);
+      if (res.data) {
+        setBalance(res.data.balance);
+        setRequests(res.data.requests);
+        setCalendar(res.data.calendar);
+      }
+    } finally {
+      if (initial) setPageLoading(false);
+      else setCalendarLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    fetchRequests();
-    leaveApi.getMyBalance().then((res) => {
-      if (res.data) setBalance(res.data);
-    });
-  }, []);
+    void loadOverview(today.getFullYear(), today.getMonth() + 1, true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadOverview]);
+
+  const handlePeriodChange = async (year: number, month: number) => {
+    setCalYear(year);
+    setCalMonth(month);
+    setCalendarLoading(true);
+    try {
+      const res = await calendarApi.getMonth(year, month);
+      if (res.data) setCalendar(res.data);
+    } finally {
+      setCalendarLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (!formData.startDate || !formData.endDate) {
@@ -66,7 +111,7 @@ export default function LeavesPage() {
       setShowForm(false);
       setFormData({ leaveType: "PL", startDate: "", endDate: "", reason: "" });
       setDayPreview(null);
-      fetchRequests();
+      await loadOverview(calYear, calMonth, false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to apply");
     } finally {
@@ -74,33 +119,89 @@ export default function LeavesPage() {
     }
   };
 
+  if (pageLoading) {
+    return (
+      <ProtectedRoute>
+        <div className="flex min-h-[50vh] flex-col items-center justify-center gap-4">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-indigo-200 border-t-indigo-600" />
+          <p className="text-sm font-medium text-slate-600">Loading your leaves & calendar...</p>
+        </div>
+      </ProtectedRoute>
+    );
+  }
+
   return (
     <ProtectedRoute>
       <div className="space-y-6">
-        <div className="rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-500 p-6 text-white shadow-lg">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        {/* Hero */}
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-indigo-600 via-blue-600 to-cyan-500 p-6 text-white shadow-2xl shadow-blue-200/40 sm:p-8">
+          <div className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
+          <div className="pointer-events-none absolute -bottom-10 left-10 h-32 w-32 rounded-full bg-cyan-300/20 blur-xl" />
+          <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <h1 className="text-2xl font-bold">My Leaves</h1>
-              <p className="mt-1 text-blue-100">
-                Apply for leave. Sundays and 2nd Saturday of each month are holidays. Sandwich
-                leave applies when holidays fall between your leave days.
+              <div className="mb-2 inline-flex items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold backdrop-blur">
+                <CalendarDays className="h-3.5 w-3.5" />
+                Leaves & Calendar
+              </div>
+              <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">My Leaves</h1>
+              <p className="mt-2 max-w-xl text-sm text-blue-100 sm:text-base">
+                View holidays, track your leave balance, apply for time off, and see your schedule
+                on the calendar — all in one place.
               </p>
             </div>
             <Button
+              variant="secondary"
               onClick={() => setShowForm(!showForm)}
-              className="bg-white text-blue-700 hover:bg-blue-50"
+              className="shrink-0 border-2 border-white bg-white px-5 py-2.5 text-indigo-700 shadow-lg hover:bg-blue-50"
             >
-              {showForm ? "Cancel" : "Apply for Leave"}
+              <span className="inline-flex items-center gap-2">
+                <Plane className="h-4 w-4" />
+                {showForm ? "Cancel" : "Apply for Leave"}
+              </span>
             </Button>
           </div>
         </div>
 
-        {showForm && (
-          <Card>
-            {error && (
-              <div className="mb-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">
-                {error}
+        {/* Balance cards */}
+        {balance && (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {BALANCE_STYLES.map(({ type, gradient, light }) => {
+              const totals = getLeaveTotals(balance);
+              const used = balance.usage?.[type] ?? 0;
+              const total = totals[type];
+              return (
+                <div
+                  key={type}
+                  className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-md"
+                >
+                  <div className={`bg-gradient-to-r ${gradient} px-4 py-2 text-xs font-bold uppercase tracking-wider text-white`}>
+                    {type}
+                  </div>
+                  <div className="p-4 text-center">
+                    <p className={`text-2xl font-bold ${light.split(" ")[1]}`}>
+                      {formatUsedTotal(used, total)}
+                    </p>
+                    <p className="mt-1 text-xs text-slate-500">used / total</p>
+                  </div>
+                </div>
+              );
+            })}
+            <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-md">
+              <div className="bg-gradient-to-r from-rose-500 to-red-600 px-4 py-2 text-xs font-bold uppercase tracking-wider text-white">
+                LWP
               </div>
+              <div className="p-4 text-center">
+                <p className="text-2xl font-bold text-rose-600">{balance.lwpTaken ?? 0}</p>
+                <p className="mt-1 text-xs text-slate-500">days taken</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showForm && (
+          <Card className="border-indigo-100 shadow-lg">
+            {error && (
+              <div className="mb-4 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
             )}
             <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
               <Select
@@ -118,15 +219,13 @@ export default function LeavesPage() {
               </Select>
               {formData.leaveType === "CL" && balance?.clHalfYear && (
                 <p className="text-xs text-slate-600 md:col-span-2">
-                  Annual CL total: <strong>{balance.clTotal ?? balance.clHalfYear.annualCl}</strong>{" "}
-                  · Remaining: <strong>{balance.cl}</strong> · Usable this half (
+                  CL (used/total):{" "}
+                  <strong>
+                    {formatUsedTotal(balance.usage?.CL ?? 0, getLeaveTotals(balance).CL)}
+                  </strong>{" "}
+                  · Usable this half (
                   {balance.clHalfYear.currentHalf === "H1" ? "Apr–Sep" : "Oct–Mar"}):{" "}
-                  <strong>{balance.clUsableThisHalf ?? balance.clHalfYear.available}</strong> day(s)
-                  {balance.clHalfYear.carriedFromH1 > 0 &&
-                    balance.clHalfYear.currentHalf === "H2" && (
-                      <span> (includes {balance.clHalfYear.carriedFromH1} carried from Apr–Sep)</span>
-                    )}
-                  .
+                  <strong>{balance.clUsableThisHalf ?? balance.clHalfYear.available}</strong> day(s).
                 </p>
               )}
               <div />
@@ -145,7 +244,7 @@ export default function LeavesPage() {
                 required
               />
               {dayPreview && dayPreview.totalDays > 0 && (
-                <div className="md:col-span-2 rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-800">
+                <div className="md:col-span-2 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 px-4 py-3 text-sm text-blue-900">
                   <strong>{dayPreview.totalDays} leave day(s)</strong> will be deducted
                   {dayPreview.sandwichDays > 0 && (
                     <span> (includes {dayPreview.sandwichDays} sandwich holiday day(s))</span>
@@ -163,7 +262,7 @@ export default function LeavesPage() {
                 />
               </div>
               <div className="md:col-span-2">
-                <Button type="submit" disabled={isSubmitting}>
+                <Button type="submit" disabled={isSubmitting} className="bg-indigo-600 hover:bg-indigo-700">
                   {isSubmitting ? "Submitting..." : "Submit Request"}
                 </Button>
               </div>
@@ -171,52 +270,60 @@ export default function LeavesPage() {
           </Card>
         )}
 
-        <Card className="overflow-hidden p-0">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-slate-200 bg-slate-50">
-                <tr>
-                  <th className="px-6 py-3 font-medium text-black">Type</th>
-                  <th className="px-6 py-3 font-medium text-black">Dates</th>
-                  <th className="px-6 py-3 font-medium text-black">Days</th>
-                  <th className="px-6 py-3 font-medium text-black">Reason</th>
-                  <th className="px-6 py-3 font-medium text-black">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {requests.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-black">
-                      No leave requests yet.
-                    </td>
-                  </tr>
-                ) : (
-                  requests.map((req) => (
-                    <tr key={req.id} className="hover:bg-slate-50">
-                      <td className="px-6 py-4 font-medium text-black">{req.leaveType}</td>
-                      <td className="px-6 py-4 text-black">
-                        {new Date(req.startDate).toLocaleDateString()} –{" "}
-                        {new Date(req.endDate).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 text-black">
-                        {req.days ?? "—"}
-                        {req.sandwichDays ? (
-                          <span className="block text-xs text-slate-500">
-                            +{req.sandwichDays} sandwich
-                          </span>
-                        ) : null}
-                      </td>
-                      <td className="px-6 py-4 text-black">{req.reason}</td>
-                      <td className="px-6 py-4">
-                        <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+        {/* Calendar + requests */}
+        <div className="grid gap-6 xl:grid-cols-5">
+          <div className="xl:col-span-3">
+            <LeaveCalendar
+              year={calYear}
+              month={calMonth}
+              data={calendar}
+              loading={calendarLoading}
+              onPeriodChange={handlePeriodChange}
+            />
           </div>
-        </Card>
+
+          <div className="xl:col-span-2">
+            <div className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-xl shadow-slate-200/40">
+              <div className="flex items-center gap-2 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white px-5 py-4">
+                <ClipboardList className="h-5 w-5 text-indigo-600" />
+                <h2 className="font-bold text-slate-900">My Leave Requests</h2>
+                <span className="ml-auto rounded-full bg-indigo-100 px-2.5 py-0.5 text-xs font-bold text-indigo-700">
+                  {requests.length}
+                </span>
+              </div>
+              <div className="max-h-[600px] overflow-y-auto p-3">
+                {requests.length === 0 ? (
+                  <p className="py-12 text-center text-sm text-slate-500">No leave requests yet.</p>
+                ) : (
+                  <ul className="space-y-3">
+                    {requests.map((req) => (
+                      <li
+                        key={req.id}
+                        className="rounded-xl border border-slate-100 bg-gradient-to-br from-white to-slate-50 p-4 transition hover:shadow-md"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <span className="rounded-lg bg-indigo-600 px-2 py-1 text-xs font-bold text-white">
+                            {req.leaveType}
+                          </span>
+                          <Badge variant={statusVariant[req.status]}>{req.status}</Badge>
+                        </div>
+                        <p className="mt-2 text-sm font-medium text-slate-800">
+                          {new Date(req.startDate).toLocaleDateString("en-IN")} –{" "}
+                          {new Date(req.endDate).toLocaleDateString("en-IN")}
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          {req.days ?? "-"} day(s)
+                          {req.sandwichDays ? ` · +${req.sandwichDays} sandwich` : ""}
+                        </p>
+                        <p className="mt-2 line-clamp-2 text-xs text-slate-600">{req.reason}</p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </ProtectedRoute>
   );

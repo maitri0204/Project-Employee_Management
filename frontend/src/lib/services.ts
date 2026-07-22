@@ -9,6 +9,9 @@ import {
   EmployeeLeaveUsageRow,
   ApplyLeaveData,
   LeaveDayBreakdown,
+  HrPolicyDocument,
+  CalendarMonthData,
+  LeaveOverview,
 } from "@/types";
 
 export const authApi = {
@@ -19,7 +22,8 @@ export const authApi = {
 };
 
 export const employeeApi = {
-  getAll: () => api.get<Employee[]>("/employees"),
+  getAll: (enrich = true) =>
+    api.get<Employee[]>(`/employees${enrich ? "" : "?enrich=false"}`),
   getById: (id: string) => api.get<Employee>(`/employees/${id}`),
   create: (formData: FormData) => api.post<Employee>("/employees", formData),
   update: (id: string, formData: FormData) => api.put<Employee>(`/employees/${id}`, formData),
@@ -44,6 +48,8 @@ export const leaveApi = {
       `/leaves/preview-days?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`
     ),
   getMyRequests: () => api.get<LeaveRequest[]>("/leaves/my"),
+  getMyOverview: (year: number, month: number) =>
+    api.get<LeaveOverview>(`/leaves/my-overview?year=${year}&month=${month}`),
   getMyBalance: () => api.get<LeaveBalanceSummary>("/leaves/balance"),
   getUsage: () =>
     api.get<{
@@ -54,4 +60,17 @@ export const leaveApi = {
   getAll: () => api.get<LeaveRequest[]>("/leaves"),
   updateStatus: (id: string, status: "APPROVED" | "REJECTED", adminNote?: string) =>
     api.patch<LeaveRequest>(`/leaves/${id}/status`, { status, adminNote }),
+};
+
+export const hrPolicyApi = {
+  list: () => api.get<HrPolicyDocument[]>("/hr-policy"),
+  upload: (formData: FormData) => api.post<HrPolicyDocument>("/hr-policy", formData),
+  delete: (id: string) => api.delete(`/hr-policy/${id}`),
+  viewUrl: (id: string) => `/hr-policy/${id}`,
+};
+
+export const calendarApi = {
+  getMonth: (year: number, month: number) =>
+    api.get<CalendarMonthData>(`/calendar?year=${year}&month=${month}`),
+  getHolidays: () => api.get<{ date: string; name: string }[]>("/calendar/holidays"),
 };

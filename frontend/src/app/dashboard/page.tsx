@@ -8,6 +8,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import { employeeApi, leaveApi } from "@/lib/services";
 import { GENDER_OPTIONS } from "@/constants/employee";
+import { formatUsedTotal, getLeaveTotals } from "@/lib/leaveFormat";
 import { LeaveBalanceSummary } from "@/types";
 import { Badge, Card, StatCard } from "@/components/ui";
 
@@ -21,7 +22,7 @@ function AdminDashboard() {
   const [pendingLeaves, setPendingLeaves] = useState(0);
 
   useEffect(() => {
-    employeeApi.getAll().then((res) => {
+    employeeApi.getAll(false).then((res) => {
       if (res.data) setEmployeeCount(res.data.length);
     });
     leaveApi.getAll().then((res) => {
@@ -47,9 +48,9 @@ function AdminDashboard() {
       gradient: "from-violet-500 to-purple-600",
     },
     {
-      label: "Leave Policy",
-      desc: "Set company-wide PL, CL, SL entitlements",
-      href: "/admin/leave-policy",
+      label: "Leave Assign",
+      desc: "Assign company-wide PL, CL, SL entitlements",
+      href: "/admin/leave-assign",
       icon: ClipboardList,
       gradient: "from-emerald-500 to-teal-600",
     },
@@ -97,19 +98,16 @@ function AdminDashboard() {
 function EmployeeDashboard() {
   const { user } = useAuth();
   const [balance, setBalance] = useState<LeaveBalanceSummary | null>(null);
-  const [pendingCount, setPendingCount] = useState(0);
   const employee = user?.employee;
 
   useEffect(() => {
     leaveApi.getMyBalance().then((res) => {
       if (res.data) setBalance(res.data);
     });
-    leaveApi.getMyRequests().then((res) => {
-      if (res.data) {
-        setPendingCount(res.data.filter((r) => r.status === "PENDING").length);
-      }
-    });
   }, []);
+
+  const totals = balance ? getLeaveTotals(balance) : null;
+  const usage = balance?.usage;
 
   return (
     <div className="space-y-6">
@@ -121,14 +119,34 @@ function EmployeeDashboard() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-4">
-        <StatCard label="PL Balance" value={balance?.pl ?? "—"} accentClass="text-blue-700" />
         <StatCard
-          label="CL (Annual Total)"
-          value={balance?.clTotal ?? balance?.policy?.annualCl ?? "—"}
+          label="PL (used/total)"
+          value={
+            usage && totals
+              ? formatUsedTotal(usage.PL, totals.PL)
+              : "-"
+          }
+          accentClass="text-blue-700"
+        />
+        <StatCard
+          label="CL (used/total)"
+          value={
+            usage && totals
+              ? formatUsedTotal(usage.CL, totals.CL)
+              : "-"
+          }
           accentClass="text-emerald-700"
         />
-        <StatCard label="SL Balance" value={balance?.sl ?? "—"} accentClass="text-amber-600" />
-        <StatCard label="LWP Taken" value={balance?.lwpTaken ?? "—"} accentClass="text-red-600" />
+        <StatCard
+          label="SL (used/total)"
+          value={
+            usage && totals
+              ? formatUsedTotal(usage.SL, totals.SL)
+              : "-"
+          }
+          accentClass="text-amber-600"
+        />
+        <StatCard label="LWP Taken" value={balance?.lwpTaken ?? "-"} accentClass="text-red-600" />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -183,18 +201,16 @@ function EmployeeDashboard() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                 <div className="rounded-xl bg-blue-50 p-4 text-center">
-                  <p className="text-2xl font-bold text-blue-700">{balance.pl}</p>
-                  <p className="text-xs font-medium text-black">PL left</p>
-                  <p className="text-xs text-slate-500">Used: {balance.usage?.PL ?? 0}</p>
+                  <p className="text-2xl font-bold text-blue-700">
+                    {usage && totals ? formatUsedTotal(usage.PL, totals.PL) : "-"}
+                  </p>
+                  <p className="text-xs font-medium text-black">PL</p>
                 </div>
                 <div className="rounded-xl bg-emerald-50 p-4 text-center">
                   <p className="text-2xl font-bold text-emerald-700">
-                    {balance.clTotal ?? balance.policy?.annualCl ?? balance.cl}
+                    {usage && totals ? formatUsedTotal(usage.CL, totals.CL) : "-"}
                   </p>
-                  <p className="text-xs font-medium text-black">CL total (year)</p>
-                  <p className="text-xs text-slate-500">
-                    Left: {balance.cl} · Used: {balance.usage?.CL ?? 0}
-                  </p>
+                  <p className="text-xs font-medium text-black">CL</p>
                   {balance.clUsableThisHalf !== undefined && (
                     <p className="mt-1 text-xs text-emerald-800">
                       Usable this half (
@@ -204,9 +220,10 @@ function EmployeeDashboard() {
                   )}
                 </div>
                 <div className="rounded-xl bg-amber-50 p-4 text-center">
-                  <p className="text-2xl font-bold text-amber-700">{balance.sl}</p>
-                  <p className="text-xs font-medium text-black">SL left</p>
-                  <p className="text-xs text-slate-500">Used: {balance.usage?.SL ?? 0}</p>
+                  <p className="text-2xl font-bold text-amber-700">
+                    {usage && totals ? formatUsedTotal(usage.SL, totals.SL) : "-"}
+                  </p>
+                  <p className="text-xs font-medium text-black">SL</p>
                 </div>
                 <div className="rounded-xl bg-red-50 p-4 text-center">
                   <p className="text-2xl font-bold text-red-700">{balance.lwpTaken ?? 0}</p>

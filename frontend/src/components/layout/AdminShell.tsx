@@ -6,9 +6,9 @@ import { useMemo, useState } from "react";
 import {
   CalendarDays,
   ClipboardList,
+  FileText,
   LayoutDashboard,
   LogOut,
-  Settings,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -44,9 +44,19 @@ const adminNav: NavItem[] = [
     icon: <ClipboardList className="h-5 w-5" />,
   },
   {
-    label: "Leave Policy",
-    href: "/admin/leave-policy",
-    icon: <Settings className="h-5 w-5" />,
+    label: "Leave Assign",
+    href: "/admin/leave-assign",
+    icon: <ClipboardList className="h-5 w-5" />,
+  },
+  {
+    label: "Calendar",
+    href: "/admin/calendar",
+    icon: <CalendarDays className="h-5 w-5" />,
+  },
+  {
+    label: "HR Policy",
+    href: "/admin/hr-policy",
+    icon: <FileText className="h-5 w-5" />,
   },
 ];
 

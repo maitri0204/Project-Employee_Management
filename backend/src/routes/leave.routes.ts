@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   applyLeave,
   getMyLeaveRequests,
+  getMyLeaveOverview,
   getMyLeaveBalance,
   getAllLeaveRequests,
   updateLeaveStatus,
@@ -16,6 +17,7 @@ router.use(authenticate);
 
 router.post("/apply", applyLeave);
 router.get("/preview-days", previewLeaveDays);
+router.get("/my-overview", getMyLeaveOverview);
 router.get("/my", getMyLeaveRequests);
 router.get("/balance", getMyLeaveBalance);
 router.get("/usage", authorize("ADMIN"), getLeaveUsage);

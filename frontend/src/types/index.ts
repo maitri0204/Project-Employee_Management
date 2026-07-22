@@ -32,6 +32,12 @@ export interface LeaveUsageBreakdown {
   LWP: number;
 }
 
+export interface LeaveTotalsBreakdown {
+  PL: number;
+  CL: number;
+  SL: number;
+}
+
 export interface ClHalfYearInfo {
   available: number;
   annualCl: number;
@@ -49,9 +55,12 @@ export interface LeaveBalanceSummary extends LeaveBalance {
   joiningDate?: string;
   financialYear?: string;
   usage?: LeaveUsageBreakdown;
+  totals?: LeaveTotalsBreakdown;
   available?: { pl: number; cl: number; sl: number };
   lwpTaken?: number;
+  plTotal?: number;
   clTotal?: number;
+  slTotal?: number;
   clUsableThisHalf?: number;
   clHalfYear?: ClHalfYearInfo;
   policy?: Pick<LeavePolicy, "plMonthlyAllowance" | "annualCl" | "annualSl">;
@@ -68,10 +77,53 @@ export interface EmployeeLeaveUsageRow {
   } | null;
   balance: { pl: number; cl: number; sl: number; lwpUsed: number };
   usage: LeaveUsageBreakdown;
+  totals?: LeaveTotalsBreakdown;
   available: { pl: number; cl: number; sl: number };
+  plTotal?: number;
   clTotal?: number;
+  slTotal?: number;
   clUsableThisHalf?: number;
   lwpTaken: number;
+}
+
+export interface HrPolicyDocument {
+  id: string;
+  displayName: string;
+  mimeType: string;
+  createdAt: string;
+}
+
+export interface CalendarLeaveEntry {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  leaveType: string;
+  status: string;
+  startDate: string;
+  endDate: string;
+}
+
+export interface CalendarDayInfo {
+  date: string;
+  isSunday: boolean;
+  isSecondSaturday: boolean;
+  isCompanyHoliday: boolean;
+  holidayName?: string;
+  isNonWorking: boolean;
+  leaves: CalendarLeaveEntry[];
+}
+
+export interface CalendarMonthData {
+  year: number;
+  month: number;
+  days: CalendarDayInfo[];
+  holidays: { date: string; name: string }[];
+}
+
+export interface LeaveOverview {
+  balance: LeaveBalanceSummary;
+  requests: LeaveRequest[];
+  calendar: CalendarMonthData;
 }
 
 export interface LeaveDayBreakdown {
@@ -114,7 +166,10 @@ export interface Employee {
   createdAt: string;
   updatedAt: string;
   leaveUsage?: LeaveUsageBreakdown;
+  leaveTotals?: LeaveTotalsBreakdown;
+  plTotal?: number;
   clTotal?: number;
+  slTotal?: number;
   clUsableThisHalf?: number;
   lwpTaken?: number;
   user?: {

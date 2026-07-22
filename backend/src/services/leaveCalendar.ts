@@ -1,5 +1,7 @@
 /** Date helpers, holidays (Sundays + 2nd Saturday), joining & financial year rules. */
 
+import { getCompanyHolidayName } from "../data/companyHolidays";
+
 export function parseDateOnly(value: string | Date): Date {
   if (value instanceof Date) {
     return new Date(value.getFullYear(), value.getMonth(), value.getDate());
@@ -48,8 +50,9 @@ export function isSecondSaturday(date: Date): boolean {
   return saturdayOfMonth(date) === 2;
 }
 
+
 export function isNonWorkingDay(date: Date): boolean {
-  return isSunday(date) || isSecondSaturday(date);
+  return isSunday(date) || isSecondSaturday(date) || Boolean(getCompanyHolidayName(dateKey(date)));
 }
 
 export function periodKey(year: number, month: number): string {

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { CalendarDays, LayoutDashboard, LogOut } from "lucide-react";
+import { CalendarDays, FileText, LayoutDashboard, LogOut } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 const employeeNav = [
@@ -14,9 +14,14 @@ const employeeNav = [
     icon: <LayoutDashboard className="h-5 w-5" />,
   },
   {
-    label: "My Leaves",
+    label: "Leaves & Calendar",
     href: "/leaves",
     icon: <CalendarDays className="h-5 w-5" />,
+  },
+  {
+    label: "HR Policy",
+    href: "/hr-policy",
+    icon: <FileText className="h-5 w-5" />,
   },
 ];
 

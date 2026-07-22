@@ -6,6 +6,8 @@ import authRoutes from "./routes/auth.routes";
 import employeeRoutes from "./routes/employee.routes";
 import leaveRoutes from "./routes/leave.routes";
 import leavePolicyRoutes from "./routes/leavePolicy.routes";
+import hrPolicyRoutes from "./routes/hrPolicy.routes";
+import calendarRoutes from "./routes/calendar.routes";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 
 const app = express();
@@ -28,6 +30,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/employees", employeeRoutes);
 app.use("/api/leaves", leaveRoutes);
 app.use("/api/leave-policy", leavePolicyRoutes);
+app.use("/api/hr-policy", hrPolicyRoutes);
+app.use("/api/calendar", calendarRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

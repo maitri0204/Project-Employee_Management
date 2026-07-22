@@ -4,7 +4,9 @@ import { JOB_ROLES } from "../constants/employee";
 import { getFileUrl, getFileUrls, normalizeUploadedFiles } from "../middleware/upload";
 import { getEffectiveJoiningDate } from "../services/leaveCalendar";
 import { initializeEmployeeLeaveBalance } from "../services/leaveAccrual";
+import { batchGetEmployeeLeaveSummaries } from "../services/leaveSummaryBatch";
 import { getEmployeeLeaveSummary } from "../services/leaveUsage";
+import { sendWelcomeEmail } from "../utils/email";
 import { sendError, sendSuccess } from "../utils/response";
 import { validateIdentityFields, validateAadharNumber, validateIfscCode, validatePanNumber } from "../utils/validation";
 
@@ -174,6 +176,11 @@ export const createEmployee = async (req: Request, res: Response) => {
       await initializeEmployeeLeaveBalance(user.employee.id);
     }
 
+    const employeeName = [firstName, middleName, lastName].filter(Boolean).join(" ");
+    void sendWelcomeEmail(normalizedEmail, employeeName).catch((err) => {
+      console.error("Welcome email failed:", err);
+    });
+
     const refreshed = await prisma.user.findUnique({
       where: { id: user.id },
       include: { employee: { include: { leaveBalance: true } } },
@@ -186,23 +193,51 @@ export const createEmployee = async (req: Request, res: Response) => {
   }
 };
 
-export const getAllEmployees = async (_req: Request, res: Response) => {
+export const getAllEmployees = async (req: Request, res: Response) => {
   try {
+    const enrich = req.query.enrich !== "false";
+
     const employees = await prisma.employee.findMany({
       where: {
         NOT: { isArchived: true },
         user: { role: "EMPLOYEE" },
       },
-      include: {
+      select: {
+        id: true,
+        firstName: true,
+        middleName: true,
+        lastName: true,
+        phone: true,
+        jobRole: true,
+        joiningDate: true,
+        createdAt: true,
         user: {
           select: { id: true, email: true, role: true },
         },
-        leaveBalance: true,
+        leaveBalance: {
+          select: { pl: true, cl: true, sl: true, lwpUsed: true },
+        },
       },
       orderBy: { createdAt: "desc" },
     });
 
-    return sendSuccess(res, "Employees fetched successfully.", employees);
+    if (!enrich) {
+      return sendSuccess(res, "Employees fetched successfully.", employees);
+    }
+
+    const employeeIds = employees.map((e) => e.id);
+    const summaries = await batchGetEmployeeLeaveSummaries(employeeIds);
+
+    const enriched = employees.map((employee) => {
+      const summary = summaries.get(employee.id);
+      return {
+        ...employee,
+        leaveUsage: summary?.usage,
+        leaveTotals: summary?.totals,
+      };
+    });
+
+    return sendSuccess(res, "Employees fetched successfully.", enriched);
   } catch (error) {
     console.error("Get employees error:", error);
     return sendError(res, "Failed to fetch employees.", 500);
@@ -235,7 +270,10 @@ export const getEmployeeById = async (req: Request, res: Response) => {
     return sendSuccess(res, "Employee fetched successfully.", {
       ...employee,
       leaveUsage: leaveSummary.usage,
+      leaveTotals: leaveSummary.totals,
       clTotal: leaveSummary.clTotal,
+      slTotal: leaveSummary.slTotal,
+      plTotal: leaveSummary.plTotal,
       clUsableThisHalf: leaveSummary.clUsableThisHalf,
       lwpTaken: leaveSummary.lwpTaken,
     });

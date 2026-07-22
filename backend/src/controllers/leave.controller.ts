@@ -5,12 +5,13 @@ import { sendError, sendSuccess } from "../utils/response";
 import { calculateLeaveDays } from "../services/leaveCalculation";
 import { getFinancialYear, parseDateOnly } from "../services/leaveCalendar";
 import { getLeavePolicy } from "../services/leavePolicy";
-import { syncEmployeeClSlBalance } from "../services/leaveBalance";
+import { refreshEmployeeLeaveBalances } from "../services/leaveSync";
 import { validateClLeaveRequest, getClHalfYearInfo } from "../services/leaveClHalfYear";
 import {
   getAllEmployeesLeaveUsage,
   getEmployeeLeaveSummary,
 } from "../services/leaveUsage";
+import { getCalendarForMonth } from "../services/calendar.service";
 
 const PAID_LEAVE_TYPES: LeaveType[] = ["PL", "CL", "SL"];
 
@@ -59,7 +60,7 @@ export const applyLeave = async (req: Request, res: Response) => {
       return sendError(res, "Employee profile not found.", 404);
     }
 
-    await syncEmployeeClSlBalance(employee.id);
+    await refreshEmployeeLeaveBalances(employee.id);
     const refreshed = await prisma.employee.findUnique({
       where: { userId },
       include: { leaveBalance: true },
@@ -187,7 +188,7 @@ export const getMyLeaveBalance = async (req: Request, res: Response) => {
     }
 
     const [summary, policy] = await Promise.all([
-      getEmployeeLeaveSummary(employee.id),
+      getEmployeeLeaveSummary(employee.id, { refresh: "pl-only" }),
       getLeavePolicy(),
     ]);
 
@@ -198,10 +199,13 @@ export const getMyLeaveBalance = async (req: Request, res: Response) => {
       joiningDate: employee.joiningDate,
       financialYear: fy.label,
       usage: summary.usage,
+      totals: summary.totals,
       available: summary.available,
       lwpTaken: summary.lwpTaken,
       clHalfYear: summary.clHalfYear,
       clTotal: summary.clTotal,
+      slTotal: summary.slTotal,
+      plTotal: summary.plTotal,
       clUsableThisHalf: summary.clUsableThisHalf,
       policy: {
         plMonthlyAllowance: policy.plMonthlyAllowance,
@@ -212,6 +216,68 @@ export const getMyLeaveBalance = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Get leave balance error:", error);
     return sendError(res, "Failed to fetch leave balance.", 500);
+  }
+};
+
+export const getMyLeaveOverview = async (req: Request, res: Response) => {
+  try {
+    const authUser = (req as AuthRequest).user!;
+    const { userId } = authUser;
+    const now = new Date();
+    const year = parseInt(String(req.query.year), 10) || now.getFullYear();
+    const month = parseInt(String(req.query.month), 10) || now.getMonth() + 1;
+
+    if (month < 1 || month > 12) {
+      return sendError(res, "Please provide a valid month (1–12).");
+    }
+
+    const employee = await prisma.employee.findUnique({
+      where: { userId },
+      select: { id: true, joiningDate: true },
+    });
+
+    if (!employee) {
+      return sendError(res, "Employee profile not found.", 404);
+    }
+
+    const [summary, policy, leaveRequests, calendar] = await Promise.all([
+      getEmployeeLeaveSummary(employee.id, { refresh: "pl-only" }),
+      getLeavePolicy(),
+      prisma.leaveRequest.findMany({
+        where: { employeeId: employee.id },
+        orderBy: { createdAt: "desc" },
+      }),
+      getCalendarForMonth(year, month, authUser),
+    ]);
+
+    const fy = getFinancialYear();
+
+    return sendSuccess(res, "Leave overview fetched successfully.", {
+      balance: {
+        ...summary.balance,
+        joiningDate: employee.joiningDate,
+        financialYear: fy.label,
+        usage: summary.usage,
+        totals: summary.totals,
+        available: summary.available,
+        lwpTaken: summary.lwpTaken,
+        clHalfYear: summary.clHalfYear,
+        clTotal: summary.clTotal,
+        slTotal: summary.slTotal,
+        plTotal: summary.plTotal,
+        clUsableThisHalf: summary.clUsableThisHalf,
+        policy: {
+          plMonthlyAllowance: policy.plMonthlyAllowance,
+          annualCl: policy.annualCl,
+          annualSl: policy.annualSl,
+        },
+      },
+      requests: leaveRequests,
+      calendar,
+    });
+  } catch (error) {
+    console.error("Get leave overview error:", error);
+    return sendError(res, "Failed to fetch leave overview.", 500);
   }
 };
 
@@ -350,7 +416,7 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
         }
       }
 
-      await syncEmployeeClSlBalance(employee.id);
+      await refreshEmployeeLeaveBalances(employee.id);
 
       if (!leaveRequest.days) {
         await prisma.leaveRequest.update({

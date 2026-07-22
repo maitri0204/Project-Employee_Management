@@ -11,7 +11,7 @@ export async function creditPendingPlForEmployee(
   const policy = await getLeavePolicy();
   if (!policy.plRepeatMonthly || policy.plMonthlyAllowance <= 0) return 0;
 
-  const balance = await prisma.leaveBalance.findUnique({
+  let balance = await prisma.leaveBalance.findUnique({
     where: { employeeId },
     include: {
       employee: {
@@ -19,6 +19,28 @@ export async function creditPendingPlForEmployee(
       },
     },
   });
+
+  if (!balance) {
+    const { label: fyLabel } = getFinancialYear(referenceDate);
+    await prisma.leaveBalance.create({
+      data: {
+        employeeId,
+        pl: 0,
+        cl: 0,
+        sl: 0,
+        lwpUsed: 0,
+        lastClSlCreditFY: fyLabel,
+      },
+    });
+    balance = await prisma.leaveBalance.findUnique({
+      where: { employeeId },
+      include: {
+        employee: {
+          select: { joiningDate: true, createdAt: true, firstName: true, lastName: true, isArchived: true },
+        },
+      },
+    });
+  }
 
   if (!balance || balance.employee.isArchived) return 0;
 

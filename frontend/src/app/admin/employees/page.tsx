@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { employeeApi } from "@/lib/services";
+import { formatUsedTotal } from "@/lib/leaveFormat";
 import { Employee } from "@/types";
 import { Badge, Button, Card } from "@/components/ui";
 
@@ -67,7 +68,7 @@ export default function AdminEmployeesPage() {
                   <th className="px-6 py-3 font-medium text-black">Email</th>
                   <th className="px-6 py-3 font-medium text-black">Phone</th>
                   <th className="px-6 py-3 font-medium text-black">Job Role</th>
-                  <th className="px-6 py-3 font-medium text-black">PL / CL / SL</th>
+                  <th className="px-6 py-3 font-medium text-black">PL / CL / SL (used/total)</th>
                   <th className="px-6 py-3 font-medium text-black">Actions</th>
                 </tr>
               </thead>
@@ -88,9 +89,11 @@ export default function AdminEmployeesPage() {
                         <Badge>{emp.jobRole || "-"}</Badge>
                       </td>
                       <td className="px-6 py-4 text-black">
-                        {emp.leaveBalance
-                          ? `${emp.leaveBalance.pl} / ${emp.leaveBalance.cl} / ${emp.leaveBalance.sl}`
-                          : "-"}
+                        {emp.leaveUsage && emp.leaveTotals
+                          ? `${formatUsedTotal(emp.leaveUsage.PL, emp.leaveTotals.PL)} / ${formatUsedTotal(emp.leaveUsage.CL, emp.leaveTotals.CL)} / ${formatUsedTotal(emp.leaveUsage.SL, emp.leaveTotals.SL)}`
+                          : emp.leaveBalance
+                            ? `${emp.leaveBalance.pl} / ${emp.leaveBalance.cl} / ${emp.leaveBalance.sl}`
+                            : "-"}
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex flex-wrap gap-2">

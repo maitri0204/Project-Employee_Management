@@ -1,8 +1,11 @@
 import prisma from "../config/database";
 import { LeaveType } from "../types";
 import { getLeavePolicy } from "./leavePolicy";
-import { syncEmployeeClSlBalance } from "./leaveBalance";
+import { creditPendingPlForEmployee } from "./leaveAccrual";
+import { refreshEmployeeLeaveBalances } from "./leaveSync";
 import { getClHalfYearInfo } from "./leaveClHalfYear";
+import { getCompletedMonthPeriods } from "./leaveCalendar";
+import { batchGetEmployeeLeaveSummaries } from "./leaveSummaryBatch";
 
 export type LeaveUsageBreakdown = {
   PL: number;
@@ -29,8 +32,17 @@ export async function getApprovedLeaveUsage(employeeId: string): Promise<LeaveUs
   return usage;
 }
 
-export async function getEmployeeLeaveSummary(employeeId: string) {
-  await syncEmployeeClSlBalance(employeeId);
+export async function getEmployeeLeaveSummary(
+  employeeId: string,
+  options: { refresh?: boolean | "pl-only" } = {}
+) {
+  const refresh = options.refresh ?? false;
+
+  if (refresh === true) {
+    await refreshEmployeeLeaveBalances(employeeId);
+  } else if (refresh === "pl-only") {
+    await creditPendingPlForEmployee(employeeId);
+  }
 
   const [balance, usage, employee, policy] = await Promise.all([
     prisma.leaveBalance.findUnique({ where: { employeeId } }),
@@ -43,6 +55,7 @@ export async function getEmployeeLeaveSummary(employeeId: string) {
         middleName: true,
         lastName: true,
         joiningDate: true,
+        createdAt: true,
         user: { select: { email: true } },
       },
     }),
@@ -51,16 +64,32 @@ export async function getEmployeeLeaveSummary(employeeId: string) {
 
   const clHalfYear = await getClHalfYearInfo(employeeId, policy.annualCl);
 
+  const joinDate = employee?.joiningDate ?? employee?.createdAt ?? new Date();
+  const plAccruedMonths =
+    policy.plRepeatMonthly && policy.plMonthlyAllowance > 0
+      ? getCompletedMonthPeriods(joinDate).length
+      : 0;
+  const plEntitledFromPolicy = plAccruedMonths * policy.plMonthlyAllowance;
+  const plFromBalance = usage.PL + (balance?.pl ?? 0);
+  const plTotal = Math.max(plEntitledFromPolicy, plFromBalance);
+
   return {
     employee,
     balance: balance ?? { pl: 0, cl: 0, sl: 0, lwpUsed: 0 },
     usage,
+    totals: {
+      PL: plTotal,
+      CL: policy.annualCl,
+      SL: policy.annualSl,
+    },
     available: {
       pl: balance?.pl ?? 0,
       cl: clHalfYear.annualRemaining,
       sl: balance?.sl ?? 0,
     },
     clTotal: policy.annualCl,
+    slTotal: policy.annualSl,
+    plTotal,
     clUsableThisHalf: clHalfYear.available,
     clHalfYear,
     lwpTaken: usage.LWP || balance?.lwpUsed || 0,
@@ -73,12 +102,41 @@ export async function getAllEmployeesLeaveUsage() {
       NOT: { isArchived: true },
       user: { role: "EMPLOYEE" },
     },
-    select: { id: true },
+    select: {
+      id: true,
+      firstName: true,
+      middleName: true,
+      lastName: true,
+      joiningDate: true,
+      user: { select: { email: true } },
+    },
   });
 
-  const summaries = await Promise.all(
-    employees.map((employee) => getEmployeeLeaveSummary(employee.id))
-  );
+  const ids = employees.map((e) => e.id);
+  const summaries = await batchGetEmployeeLeaveSummaries(ids);
 
-  return summaries;
+  const balances = await prisma.leaveBalance.findMany({
+    where: { employeeId: { in: ids } },
+  });
+  const balanceMap = new Map(balances.map((b) => [b.employeeId, b]));
+
+  return employees.map((employee) => {
+    const summary = summaries.get(employee.id);
+    const balance = balanceMap.get(employee.id);
+    return {
+      employee,
+      balance: balance ?? { pl: 0, cl: 0, sl: 0, lwpUsed: 0 },
+      usage: summary?.usage ?? { PL: 0, CL: 0, SL: 0, LWP: 0 },
+      totals: summary?.totals ?? { PL: 0, CL: 0, SL: 0 },
+      available: {
+        pl: balance?.pl ?? 0,
+        cl: summary?.totals.CL ?? 0,
+        sl: balance?.sl ?? 0,
+      },
+      clTotal: summary?.clTotal ?? 0,
+      slTotal: summary?.slTotal ?? 0,
+      plTotal: summary?.plTotal ?? 0,
+      lwpTaken: summary?.usage?.LWP ?? balance?.lwpUsed ?? 0,
+    };
+  });
 }

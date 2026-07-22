@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { employeeApi } from "@/lib/services";
+import { formatUsedTotal } from "@/lib/leaveFormat";
 import { UPLOADS_BASE } from "@/lib/api";
 import { ACCOUNT_TYPES, GENDER_OPTIONS } from "@/constants/employee";
 import { Employee } from "@/types";
@@ -219,9 +220,9 @@ export default function EmployeeDetailPage() {
             <Card>
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="text-lg font-semibold text-blue-700">Leave Summary</h2>
-                <Link href="/admin/leave-policy">
+                <Link href="/admin/leave-assign">
                   <Button variant="secondary" className="text-xs">
-                    Company Policy
+                    Leave Assign
                   </Button>
                 </Link>
               </div>
@@ -235,17 +236,22 @@ export default function EmployeeDetailPage() {
               )}
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <div className="rounded-xl bg-blue-50 p-4">
-                  <p className="text-xs font-medium text-slate-600">PL available / used</p>
+                  <p className="text-xs font-medium text-slate-600">PL (used/total)</p>
                   <p className="mt-1 text-xl font-bold text-blue-700">
-                    {employee.leaveBalance?.pl ?? 0} / {employee.leaveUsage?.PL ?? 0}
+                    {formatUsedTotal(
+                      employee.leaveUsage?.PL ?? 0,
+                      employee.leaveTotals?.PL ??
+                        (employee.leaveUsage?.PL ?? 0) + (employee.leaveBalance?.pl ?? 0)
+                    )}
                   </p>
                 </div>
                 <div className="rounded-xl bg-emerald-50 p-4">
-                  <p className="text-xs font-medium text-slate-600">CL total / used</p>
+                  <p className="text-xs font-medium text-slate-600">CL (used/total)</p>
                   <p className="mt-1 text-xl font-bold text-emerald-700">
-                    {employee.clTotal ??
-                      (employee.leaveBalance?.cl ?? 0) + (employee.leaveUsage?.CL ?? 0)}{" "}
-                    / {employee.leaveUsage?.CL ?? 0}
+                    {formatUsedTotal(
+                      employee.leaveUsage?.CL ?? 0,
+                      employee.leaveTotals?.CL ?? employee.clTotal ?? 0
+                    )}
                   </p>
                   {employee.clUsableThisHalf !== undefined && (
                     <p className="mt-1 text-xs text-slate-500">
@@ -254,9 +260,13 @@ export default function EmployeeDetailPage() {
                   )}
                 </div>
                 <div className="rounded-xl bg-amber-50 p-4">
-                  <p className="text-xs font-medium text-slate-600">SL available / used</p>
+                  <p className="text-xs font-medium text-slate-600">SL (used/total)</p>
                   <p className="mt-1 text-xl font-bold text-amber-700">
-                    {employee.leaveBalance?.sl ?? 0} / {employee.leaveUsage?.SL ?? 0}
+                    {formatUsedTotal(
+                      employee.leaveUsage?.SL ?? 0,
+                      employee.leaveTotals?.SL ??
+                        (employee.leaveUsage?.SL ?? 0) + (employee.leaveBalance?.sl ?? 0)
+                    )}
                   </p>
                 </div>
                 <div className="rounded-xl bg-red-50 p-4">
