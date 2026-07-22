@@ -42,8 +42,8 @@ model Employee {
   firstName             String
   middleName            String?
   lastName              String
-  dateOfBirth           DateTime
-  gender                String
+  dateOfBirth           DateTime?
+  gender                String?
   jobRole               String?
   addressLine1          String?
   addressLine2          String?
@@ -53,19 +53,23 @@ model Employee {
   city                  String?
   pincode               String?
   phone                 String
-  panNumber             String         @unique
-  aadharNumber          String         @unique
-  bankAccountNumber     String
+  panNumber             String?        @unique
+  aadharNumber          String?        @unique
+  bankAccountNumber     String?
   accountType           String?
-  ifscCode              String
-  bankName              String
-  bankBranchName        String
+  ifscCode              String?
+  bankName              String?
+  bankBranchName        String?
   aadharCardUrl         String?
   panCardUrl            String?
   cancelledChequeUrl    String?
   degreeCertificateUrls String[]
   resumeUrl             String?
   isArchived            Boolean        @default(false)
+  isProfileLocked       Boolean        @default(false)
+  documentsStatus       String         @default("NOT_SUBMITTED")
+  documentsRejectedReason String?
+  documentReviews       Json?
   joiningDate           DateTime?
   createdAt             DateTime       @default(now())
   updatedAt             DateTime       @updatedAt

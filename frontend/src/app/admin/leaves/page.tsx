@@ -167,7 +167,7 @@ function RequestCard({
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-wide text-indigo-600">Duration</p>
               <p className="text-sm font-bold text-indigo-900">
-                {req.days ?? "—"} day{(req.days ?? 0) === 1 ? "" : "s"}
+                {req.days ?? "-"} day{(req.days ?? 0) === 1 ? "" : "s"}
                 {req.sandwichDays ? (
                   <span className="ml-1 text-xs font-medium text-amber-700">
                     (+{req.sandwichDays} sandwich)
@@ -458,7 +458,7 @@ export default function AdminLeavesPage() {
                 <h3 className="text-lg font-semibold text-slate-900">No requests here</h3>
                 <p className="mt-1 max-w-sm text-sm text-slate-500">
                   {requestFilter === "PENDING"
-                    ? "You're all caught up — no pending leave requests right now."
+                    ? "You're all caught up - no pending leave requests right now."
                     : `No ${requestFilter.toLowerCase()} leave requests to show.`}
                 </p>
               </div>

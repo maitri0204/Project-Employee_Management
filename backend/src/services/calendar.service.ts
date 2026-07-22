@@ -15,6 +15,8 @@ export type CalendarLeaveEntry = {
   id: string;
   employeeId: string;
   employeeName: string;
+  jobRole?: string | null;
+  days?: number | null;
   leaveType: string;
   status: string;
   startDate: string;
@@ -71,7 +73,13 @@ export async function getCalendarForMonth(
     where: leaveWhere,
     include: {
       employee: {
-        select: { id: true, firstName: true, middleName: true, lastName: true },
+        select: {
+          id: true,
+          firstName: true,
+          middleName: true,
+          lastName: true,
+          jobRole: true,
+        },
       },
     },
     orderBy: { startDate: "asc" },
@@ -96,6 +104,8 @@ export async function getCalendarForMonth(
         id: request.id,
         employeeId: request.employeeId,
         employeeName: formatEmployeeName(request.employee),
+        jobRole: request.employee.jobRole,
+        days: request.days,
         leaveType: formatLeaveBreakdownLabel(getRequestBreakdown(request)),
         status: request.status,
         startDate: request.startDate.toISOString(),
@@ -122,7 +132,7 @@ export async function getCalendarForMonth(
   };
 }
 
-/** Used by leave calculation — company holidays are non-working. */
+/** Used by leave calculation - company holidays are non-working. */
 export function isCompanyHolidayDate(date: Date): boolean {
   return Boolean(getCompanyHolidayName(dateKey(date)));
 }

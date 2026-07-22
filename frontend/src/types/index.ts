@@ -95,10 +95,33 @@ export interface HrPolicyDocument {
   createdAt: string;
 }
 
+export type DocumentsStatus =
+  | "NOT_SUBMITTED"
+  | "PENDING_REVIEW"
+  | "APPROVED"
+  | "REJECTED";
+
+export type DocumentKey =
+  | "aadharCard"
+  | "panCard"
+  | "cancelledCheque"
+  | "resume"
+  | "degreeCertificates";
+
+export type DocumentReviewEntry = {
+  status: DocumentsStatus;
+  rejectedReason?: string | null;
+  reviewedAt?: string | null;
+};
+
+export type DocumentReviews = Partial<Record<DocumentKey, DocumentReviewEntry>>;
+
 export interface CalendarLeaveEntry {
   id: string;
   employeeId: string;
   employeeName: string;
+  jobRole?: string | null;
+  days?: number | null;
   leaveType: string;
   status: string;
   startDate: string;
@@ -140,8 +163,8 @@ export interface Employee {
   firstName: string;
   middleName?: string | null;
   lastName: string;
-  dateOfBirth: string;
-  gender: Gender;
+  dateOfBirth?: string | null;
+  gender?: Gender | null;
   jobRole?: string | null;
   joiningDate?: string;
   addressLine1?: string | null;
@@ -152,19 +175,23 @@ export interface Employee {
   city?: string | null;
   pincode?: string | null;
   phone: string;
-  panNumber: string;
-  aadharNumber: string;
-  bankAccountNumber: string;
+  panNumber?: string | null;
+  aadharNumber?: string | null;
+  bankAccountNumber?: string | null;
   accountType?: string | null;
-  ifscCode: string;
-  bankName: string;
-  bankBranchName: string;
+  ifscCode?: string | null;
+  bankName?: string | null;
+  bankBranchName?: string | null;
   aadharCardUrl?: string | null;
   panCardUrl?: string | null;
   cancelledChequeUrl?: string | null;
   degreeCertificateUrls?: string[];
   resumeUrl?: string | null;
   isArchived?: boolean;
+  isProfileLocked?: boolean;
+  documentsStatus?: DocumentsStatus;
+  documentsRejectedReason?: string | null;
+  documentReviews?: DocumentReviews | null;
   createdAt: string;
   updatedAt: string;
   leaveUsage?: LeaveUsageBreakdown;

@@ -74,10 +74,10 @@ class ApiClient {
     });
   }
 
-  patch<T>(endpoint: string, body: unknown) {
+  patch<T>(endpoint: string, body?: unknown) {
     return this.request<T>(endpoint, {
       method: "PATCH",
-      body: JSON.stringify(body),
+      body: body instanceof FormData ? body : JSON.stringify(body),
     });
   }
 

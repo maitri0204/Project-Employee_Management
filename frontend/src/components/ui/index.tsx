@@ -199,21 +199,34 @@ export function Card({
 export function Button({
   children,
   variant = "primary",
+  size = "md",
   className = "",
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "secondary" | "danger" | "success";
+  variant?: "primary" | "secondary" | "danger" | "success" | "outline";
+  size?: "sm" | "md";
 }) {
   const variants = {
-    primary: "bg-blue-600 text-white hover:bg-blue-700",
-    secondary: "border border-slate-200 bg-white text-black hover:bg-slate-50",
-    danger: "bg-red-600 text-white hover:bg-red-700",
-    success: "bg-emerald-600 text-white hover:bg-emerald-700",
+    primary:
+      "bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-sm shadow-blue-200/60 hover:from-blue-700 hover:to-indigo-700 hover:shadow-md",
+    secondary:
+      "border border-slate-200 bg-white text-slate-700 shadow-sm hover:border-slate-300 hover:bg-slate-50 hover:shadow",
+    outline:
+      "border border-blue-200 bg-blue-50 text-blue-700 shadow-sm hover:border-blue-300 hover:bg-blue-100",
+    danger:
+      "bg-gradient-to-r from-red-600 to-rose-600 text-white shadow-sm shadow-red-200/60 hover:from-red-700 hover:to-rose-700 hover:shadow-md",
+    success:
+      "bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-sm shadow-emerald-200/60 hover:from-emerald-700 hover:to-teal-700 hover:shadow-md",
+  };
+
+  const sizes = {
+    sm: "rounded-lg px-3 py-1.5 text-xs",
+    md: "rounded-xl px-4 py-2.5 text-sm",
   };
 
   return (
     <button
-      className={`rounded-lg px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-50 ${variants[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-1.5 font-semibold transition-all duration-200 hover:-translate-y-px active:translate-y-0 disabled:translate-y-0 disabled:cursor-not-allowed disabled:opacity-50 ${variants[variant]} ${sizes[size]} ${className}`}
       {...props}
     >
       {children}

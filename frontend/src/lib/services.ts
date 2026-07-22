@@ -3,6 +3,7 @@ import {
   AuthResponse,
   User,
   Employee,
+  DocumentKey,
   LeaveRequest,
   LeaveBalanceSummary,
   LeavePolicy,
@@ -27,6 +28,13 @@ export const employeeApi = {
   getById: (id: string) => api.get<Employee>(`/employees/${id}`),
   create: (formData: FormData) => api.post<Employee>("/employees", formData),
   update: (id: string, formData: FormData) => api.put<Employee>(`/employees/${id}`, formData),
+  updateMyProfile: (formData: FormData) => api.patch<Employee>("/employees/me", formData),
+  approveDocument: (id: string, documentKey: DocumentKey) =>
+    api.patch<Employee>(`/employees/${id}/documents/${documentKey}/approve`, {}),
+  rejectDocument: (id: string, documentKey: DocumentKey, reason: string) =>
+    api.patch<Employee>(`/employees/${id}/documents/${documentKey}/reject`, { reason }),
+  toggleLock: (id: string, locked: boolean) =>
+    api.patch<Employee>(`/employees/${id}/lock`, { locked }),
   archive: (id: string) => api.patch(`/employees/${id}/archive`, {}),
   delete: (id: string) => api.delete(`/employees/${id}`),
 };

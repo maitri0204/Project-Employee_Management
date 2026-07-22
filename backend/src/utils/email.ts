@@ -25,7 +25,7 @@ export const sendWelcomeEmail = async (email: string, name: string): Promise<voi
     <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px;">
       <h2 style="color: #1e40af;">Welcome to Employee Management System</h2>
       <p>Hi ${name},</p>
-      <p>Your employee account has been created. You can sign in using OTP at the link below.</p>
+      <p>Your employee account has been created. Please sign in and complete your profile with personal details and document uploads.</p>
       <p><strong>Login email:</strong> ${email}</p>
       <p style="margin: 24px 0;">
         <a href="${loginUrl}" style="background: #2563eb; color: #fff; padding: 12px 20px; border-radius: 8px; text-decoration: none; font-weight: bold;">
@@ -46,6 +46,46 @@ export const sendWelcomeEmail = async (email: string, name: string): Promise<voi
     from: config.smtp.from,
     to: email,
     subject: "Welcome to Employee Management System",
+    html,
+  });
+};
+
+export const sendDocumentRejectionEmail = async (
+  email: string,
+  name: string,
+  documentLabel: string,
+  reason: string
+): Promise<void> => {
+  const transporter = createTransporter();
+  const portalUrl = config.frontendUrl;
+
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 520px; margin: 0 auto; padding: 24px;">
+      <h2 style="color: #b45309;">Document review update</h2>
+      <p>Hi ${name},</p>
+      <p>Your <strong>${documentLabel}</strong> was reviewed and needs changes before it can be approved.</p>
+      <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 16px; margin: 16px 0; border-radius: 4px;">
+        <p style="margin: 0; color: #92400e;"><strong>Reason:</strong></p>
+        <p style="margin: 8px 0 0; color: #78350f;">${reason}</p>
+      </div>
+      <p>Please sign in, update this document, and resubmit for review.</p>
+      <p style="margin: 24px 0;">
+        <a href="${portalUrl}/profile" style="background: #2563eb; color: #fff; padding: 12px 20px; border-radius: 8px; text-decoration: none; font-weight: bold;">
+          Open My Profile
+        </a>
+      </p>
+    </div>
+  `;
+
+  if (!transporter) {
+    console.log(`\n📧 Document rejection for ${email} (${name})\nDocument: ${documentLabel}\nReason: ${reason}\n`);
+    return;
+  }
+
+  await transporter.sendMail({
+    from: config.smtp.from,
+    to: email,
+    subject: "Documents need revision - Employee Management System",
     html,
   });
 };

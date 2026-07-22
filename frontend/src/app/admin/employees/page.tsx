@@ -55,7 +55,7 @@ export default function AdminEmployeesPage() {
             <p className="mt-1 text-sm text-black">Manage your team members and their details.</p>
           </div>
           <Link href="/admin/employees/add">
-            <Button>+ Add Employee</Button>
+            <Button size="sm">+ Add Employee</Button>
           </Link>
         </div>
 
@@ -99,8 +99,8 @@ export default function AdminEmployeesPage() {
                         <div className="flex flex-wrap gap-2">
                           <Button
                             type="button"
-                            variant="secondary"
-                            className="text-xs"
+                            variant="outline"
+                            size="sm"
                             onClick={() => router.push(`/admin/employees/${emp.id}`)}
                           >
                             View Details
@@ -108,7 +108,7 @@ export default function AdminEmployeesPage() {
                           <Button
                             type="button"
                             variant="danger"
-                            className="text-xs"
+                            size="sm"
                             disabled={archivingId === emp.id}
                             onClick={() => void handleArchive(emp)}
                           >

@@ -30,7 +30,7 @@ export function formatLeaveBreakdownLabel(
     );
     if (parts.length > 0) return parts.join(" · ");
   }
-  return fallbackType ?? "—";
+  return fallbackType ?? "-";
 }
 
 export function getRequestBreakdownDisplay(request: {
@@ -44,7 +44,7 @@ export function getRequestBreakdownDisplay(request: {
   if (request.days && request.leaveType && request.leaveType !== "MIXED") {
     return `${request.leaveType}: ${request.days}`;
   }
-  return request.leaveType ?? "—";
+  return request.leaveType ?? "-";
 }
 
 export function breakdownFromRequest(request: {

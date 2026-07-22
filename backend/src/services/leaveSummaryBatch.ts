@@ -27,7 +27,7 @@ export type EmployeeLeaveSummaryData = {
   slTotal: number;
 };
 
-/** Fast batch summaries for list views — one policy fetch, bulk queries (no accrual on read). */
+/** Fast batch summaries for list views - one policy fetch, bulk queries (no accrual on read). */
 export async function batchGetEmployeeLeaveSummaries(
   employeeIds: string[],
   options: { runAccrual?: boolean } = { runAccrual: false }

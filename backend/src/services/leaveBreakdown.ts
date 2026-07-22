@@ -49,7 +49,7 @@ export function getRequestBreakdown(request: {
 
 export function resolveLeaveTypeLabel(breakdown: LeaveBreakdown): string {
   const used = LEAVE_TYPES.filter((type) => breakdown[type] > 0);
-  if (used.length === 0) return "—";
+  if (used.length === 0) return "-";
   if (used.length === 1) return used[0];
   return "MIXED";
 }
@@ -58,7 +58,7 @@ export function formatLeaveBreakdownLabel(breakdown: LeaveBreakdown): string {
   const parts = LEAVE_TYPES.filter((type) => breakdown[type] > 0).map(
     (type) => `${type}: ${breakdown[type]}`
   );
-  return parts.length > 0 ? parts.join(" · ") : "—";
+  return parts.length > 0 ? parts.join(" · ") : "-";
 }
 
 export function addBreakdownToUsage(

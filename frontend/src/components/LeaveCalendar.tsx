@@ -46,7 +46,7 @@ function todayKey() {
 
 function dayStyle(day: CalendarDayInfo, isToday: boolean, isSelected: boolean) {
   const base =
-    "relative min-h-[88px] rounded-xl border p-2 text-left text-xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md";
+    "relative min-h-[88px] cursor-pointer rounded-xl border p-2 text-left text-xs transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md";
 
   let colors = "border-slate-200/80 bg-white hover:border-slate-300";
   if (day.isCompanyHoliday) {
@@ -94,6 +94,7 @@ export default function LeaveCalendar({
   const [internalData, setInternalData] = useState<CalendarMonthData | null>(null);
   const [internalLoading, setInternalLoading] = useState(true);
   const [selected, setSelected] = useState<CalendarDayInfo | null>(null);
+  const [selectedLeave, setSelectedLeave] = useState<CalendarDayInfo["leaves"][0] | null>(null);
 
   const isControlled = controlledYear !== undefined && controlledMonth !== undefined;
   const year = isControlled ? controlledYear : internalYear;
@@ -110,6 +111,7 @@ export default function LeaveCalendar({
       setInternalMonth(nextMonth);
     }
     setSelected(null);
+    setSelectedLeave(null);
   };
 
   useEffect(() => {
@@ -247,10 +249,17 @@ export default function LeaveCalendar({
                   const isToday = day.date === todayKey();
                   const isSelected = selected?.date === day.date;
                   return (
-                    <button
+                    <div
                       key={day.date}
-                      type="button"
+                      role="button"
+                      tabIndex={0}
                       onClick={() => setSelected(day)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          setSelected(day);
+                        }
+                      }}
                       className={dayStyle(day, isToday, isSelected)}
                     >
                       <div className="flex items-start justify-between gap-1">
@@ -278,23 +287,42 @@ export default function LeaveCalendar({
                         </p>
                       )}
                       {day.leaves.length > 0 && (
-                        <div className="mt-1 flex flex-wrap gap-0.5">
-                          {(adminView
-                            ? [...new Set(day.leaves.map((l) => l.leaveType))]
-                            : day.leaves.map((l) => l.leaveType)
-                          )
-                            .slice(0, 3)
-                            .map((type, idx) => (
-                              <span
-                                key={`${type}-${idx}`}
-                                className={`rounded px-1 py-0.5 text-[9px] font-bold text-white ${LEAVE_COLORS[type] ?? "bg-slate-500"}`}
+                        <div className="mt-1 space-y-0.5">
+                          {adminView ? (
+                            day.leaves.slice(0, 2).map((leave) => (
+                              <button
+                                key={`${leave.id}-${leave.employeeId}`}
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelected(day);
+                                  setSelectedLeave(leave);
+                                }}
+                                className="block w-full truncate rounded-md bg-sky-600/90 px-1.5 py-0.5 text-left text-[9px] font-semibold text-white hover:bg-sky-700"
                               >
-                                {type}
-                              </span>
-                            ))}
+                                {leave.employeeName}
+                              </button>
+                            ))
+                          ) : (
+                            <div className="flex flex-wrap gap-0.5">
+                              {day.leaves.slice(0, 3).map((leave, idx) => (
+                                <span
+                                  key={`${leave.leaveType}-${idx}`}
+                                  className={`rounded px-1 py-0.5 text-[9px] font-bold text-white ${LEAVE_COLORS[leave.leaveType.split(":")[0]?.trim() ?? ""] ?? "bg-slate-500"}`}
+                                >
+                                  {leave.leaveType}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {adminView && day.leaves.length > 2 && (
+                            <p className="text-[9px] font-medium text-sky-700">
+                              +{day.leaves.length - 2} more
+                            </p>
+                          )}
                         </div>
                       )}
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -320,49 +348,114 @@ export default function LeaveCalendar({
               </p>
             )}
             {selected.isSunday && (
-              <p className="text-slate-600">Weekly off — Sunday</p>
+              <p className="text-slate-600">Weekly off - Sunday</p>
             )}
             {selected.isSecondSaturday && (
-              <p className="text-slate-600">Weekly off — 2nd Saturday</p>
+              <p className="text-slate-600">Weekly off - 2nd Saturday</p>
             )}
             {selected.leaves.length === 0 ? (
               <p className="text-slate-500">No leave scheduled on this day.</p>
             ) : (
               <ul className="space-y-2 pt-1">
                 {selected.leaves.map((leave) => (
-                  <li
-                    key={`${leave.id}-${leave.employeeId}`}
-                    className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm"
-                  >
-                    {adminView && (
-                      <p className="font-semibold text-slate-900">{leave.employeeName}</p>
+                  <li key={`${leave.id}-${leave.employeeId}`}>
+                    {adminView ? (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedLeave(leave)}
+                        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-left shadow-sm transition hover:border-sky-300 hover:shadow-md"
+                      >
+                        <p className="font-semibold text-slate-900">{leave.employeeName}</p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {leave.jobRole || "Role not set"} · Tap for details
+                        </p>
+                      </button>
+                    ) : (
+                      <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-xs font-bold text-white ${LEAVE_COLORS[leave.leaveType.split(":")[0]?.trim() ?? ""] ?? "bg-slate-500"}`}
+                          >
+                            {leave.leaveType}
+                          </span>
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
+                              leave.status === "APPROVED"
+                                ? "bg-emerald-100 text-emerald-800"
+                                : leave.status === "PENDING"
+                                  ? "bg-amber-100 text-amber-800"
+                                  : "bg-rose-100 text-rose-800"
+                            }`}
+                          >
+                            {leave.status}
+                          </span>
+                        </div>
+                        <p className="mt-2 text-xs text-slate-500">
+                          {new Date(leave.startDate).toLocaleDateString("en-IN")} –{" "}
+                          {new Date(leave.endDate).toLocaleDateString("en-IN")}
+                        </p>
+                      </div>
                     )}
-                    <div className="mt-1 flex flex-wrap items-center gap-2">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-bold text-white ${LEAVE_COLORS[leave.leaveType] ?? "bg-slate-500"}`}
-                      >
-                        {leave.leaveType}
-                      </span>
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs font-semibold ${
-                          leave.status === "APPROVED"
-                            ? "bg-emerald-100 text-emerald-800"
-                            : leave.status === "PENDING"
-                              ? "bg-amber-100 text-amber-800"
-                              : "bg-rose-100 text-rose-800"
-                        }`}
-                      >
-                        {leave.status}
-                      </span>
-                    </div>
-                    <p className="mt-2 text-xs text-slate-500">
-                      {new Date(leave.startDate).toLocaleDateString("en-IN")} –{" "}
-                      {new Date(leave.endDate).toLocaleDateString("en-IN")}
-                    </p>
                   </li>
                 ))}
               </ul>
             )}
+          </div>
+        </div>
+      )}
+
+      {adminView && selectedLeave && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-bold text-slate-900">{selectedLeave.employeeName}</h3>
+            <dl className="mt-4 space-y-3 text-sm">
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Role</dt>
+                <dd className="mt-1 font-medium text-slate-900">
+                  {selectedLeave.jobRole || "Not specified"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Days applied
+                </dt>
+                <dd className="mt-1 font-medium text-slate-900">
+                  {selectedLeave.days ?? "-"} day{selectedLeave.days === 1 ? "" : "s"}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Leave period
+                </dt>
+                <dd className="mt-1 font-medium text-slate-900">
+                  {new Date(selectedLeave.startDate).toLocaleDateString("en-IN")} –{" "}
+                  {new Date(selectedLeave.endDate).toLocaleDateString("en-IN")}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">Status</dt>
+                <dd className="mt-1">
+                  <span
+                    className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                      selectedLeave.status === "APPROVED"
+                        ? "bg-emerald-100 text-emerald-800"
+                        : selectedLeave.status === "PENDING"
+                          ? "bg-amber-100 text-amber-800"
+                          : "bg-rose-100 text-rose-800"
+                    }`}
+                  >
+                    {selectedLeave.status}
+                  </span>
+                </dd>
+              </div>
+            </dl>
+            <button
+              type="button"
+              onClick={() => setSelectedLeave(null)}
+              className="mt-6 w-full rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white hover:bg-slate-800"
+            >
+              Close
+            </button>
           </div>
         </div>
       )}

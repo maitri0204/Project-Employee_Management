@@ -363,7 +363,7 @@ export default function LeavesPage() {
                       </span>
                     </div>
                     <p className="mb-4 text-xs text-slate-600">
-                      Split the {requiredDays} day(s) across one or more types — e.g. 1 CL + 1 SL.
+                      Split the {requiredDays} day(s) across one or more types - e.g. 1 CL + 1 SL.
                     </p>
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                       {LEAVE_TYPES.map((type) => {

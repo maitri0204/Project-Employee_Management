@@ -1,3 +1,5 @@
+import type { DocumentReviews } from "@/types";
+
 export const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
 export const AADHAR_REGEX = /^[0-9]{12}$/;
 export const IFSC_REGEX = /^[A-Z]{4}0[A-Z0-9]{6}$/;
@@ -99,6 +101,82 @@ export const validateEmployeeForm = (
 
   Object.assign(errors, validateIdentityFields(form));
 
+  return errors;
+};
+
+export const validateEmployeeProfileForm = (
+  form: Pick<
+    EmployeeFormData,
+    | "dateOfBirth"
+    | "addressLine1"
+    | "country"
+    | "state"
+    | "city"
+    | "pincode"
+    | "panNumber"
+    | "aadharNumber"
+    | "bankAccountNumber"
+    | "accountType"
+    | "ifscCode"
+    | "bankName"
+    | "bankBranchName"
+  >,
+  countryCode: string,
+  stateCode: string
+): Record<string, string> => {
+  const errors: Record<string, string> = {};
+
+  if (!form.dateOfBirth) errors.dateOfBirth = "Date of birth is required.";
+  if (!form.addressLine1.trim()) errors.addressLine1 = "Address line 1 is required.";
+  if (!countryCode) errors.country = "Please select a country.";
+  if (!stateCode) errors.state = "Please select a state.";
+  if (!form.city) errors.city = "Please select a city.";
+  if (!form.pincode.trim()) errors.pincode = "Pincode is required.";
+  if (!form.bankAccountNumber.trim()) {
+    errors.bankAccountNumber = "Bank account number is required.";
+  }
+  if (!form.accountType) errors.accountType = "Please select account type.";
+  if (!form.bankName.trim()) errors.bankName = "Bank name is required.";
+  if (!form.bankBranchName.trim()) errors.bankBranchName = "Bank branch name is required.";
+
+  Object.assign(errors, validateIdentityFields(form));
+
+  return errors;
+};
+
+export const validateEmployeeDocumentsForSubmit = (
+  files: EmployeeFormFiles,
+  existing: {
+    aadharCardUrl?: string | null;
+    panCardUrl?: string | null;
+    cancelledChequeUrl?: string | null;
+    resumeUrl?: string | null;
+    degreeCertificateUrls?: string[];
+  },
+  documentReviews?: DocumentReviews | null
+): Record<string, string> => {
+  const isRejected = (docKey: string) =>
+    documentReviews?.[docKey as keyof DocumentReviews]?.status === "REJECTED";
+
+  const errors: Record<string, string> = {};
+  if (!files.aadharCard && (!existing.aadharCardUrl || isRejected("aadharCard"))) {
+    errors.aadharCard = "Aadhar card is required.";
+  }
+  if (!files.panCard && (!existing.panCardUrl || isRejected("panCard"))) {
+    errors.panCard = "PAN card is required.";
+  }
+  if (!files.cancelledCheque && (!existing.cancelledChequeUrl || isRejected("cancelledCheque"))) {
+    errors.cancelledCheque = "Cancelled cheque is required.";
+  }
+  if (!files.resume && (!existing.resumeUrl || isRejected("resume"))) {
+    errors.resume = "Resume is required.";
+  }
+  if (
+    (!files.degreeCertificates || files.degreeCertificates.length === 0) &&
+    (!existing.degreeCertificateUrls?.length || isRejected("degreeCertificates"))
+  ) {
+    errors.degreeCertificates = "At least one degree certificate is required.";
+  }
   return errors;
 };
 

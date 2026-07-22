@@ -147,7 +147,15 @@ function EmployeeDashboard() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
-          <h2 className="mb-4 text-lg font-semibold text-black">Profile</h2>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-black">Profile</h2>
+            <Link
+              href="/profile"
+              className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+            >
+              Complete Profile
+            </Link>
+          </div>
           {employee ? (
             <dl className="space-y-3 text-sm">
               <div className="flex justify-between gap-4">
