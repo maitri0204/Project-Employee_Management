@@ -1,20 +1,26 @@
 import { Request, Response } from "express";
 import prisma from "../config/database";
-import { AuthRequest, LeaveType } from "../types";
+import { AuthRequest } from "../types";
 import { sendError, sendSuccess } from "../utils/response";
 import { calculateLeaveDays } from "../services/leaveCalculation";
 import { getFinancialYear, parseDateOnly } from "../services/leaveCalendar";
 import { getLeavePolicy } from "../services/leavePolicy";
 import { refreshEmployeeLeaveBalances } from "../services/leaveSync";
-import { validateClLeaveRequest, getClHalfYearInfo } from "../services/leaveClHalfYear";
-import { getPendingLeaveDays } from "../services/leavePending";
 import {
   getAllEmployeesLeaveUsage,
   getEmployeeLeaveSummary,
 } from "../services/leaveUsage";
 import { getCalendarForMonth } from "../services/calendar.service";
-
-const PAID_LEAVE_TYPES: LeaveType[] = ["PL", "CL", "SL"];
+import {
+  parseLeaveBreakdownInput,
+  resolveLeaveTypeLabel,
+  getRequestBreakdown,
+} from "../services/leaveBreakdown";
+import {
+  validateLeaveBreakdownApplication,
+  validateLeaveBreakdownApproval,
+  deductApprovedLeaveBreakdown,
+} from "../services/leaveApplication";
 
 export const previewLeaveDays = async (req: Request, res: Response) => {
   try {
@@ -42,14 +48,18 @@ export const previewLeaveDays = async (req: Request, res: Response) => {
 export const applyLeave = async (req: Request, res: Response) => {
   try {
     const { userId } = (req as AuthRequest).user!;
-    const { leaveType, startDate, endDate, reason } = req.body;
+    const { leaveBreakdown: rawBreakdown, startDate, endDate, reason } = req.body;
 
-    if (!leaveType || !startDate || !endDate || !reason) {
+    if (!startDate || !endDate || !reason) {
       return sendError(res, "Please provide all required fields.");
     }
 
-    if (!["PL", "CL", "SL", "LWP"].includes(leaveType)) {
-      return sendError(res, "Invalid leave type. Use PL, CL, SL, or LWP.");
+    const breakdown = parseLeaveBreakdownInput(rawBreakdown);
+    if (!breakdown) {
+      return sendError(
+        res,
+        "Please allocate leave days across one or more types (PL, CL, SL, LWP)."
+      );
     }
 
     const employee = await prisma.employee.findUnique({
@@ -84,69 +94,27 @@ export const applyLeave = async (req: Request, res: Response) => {
       return sendError(res, "No leave days in the selected range. Pick at least one working day.");
     }
 
-    if (PAID_LEAVE_TYPES.includes(leaveType as LeaveType)) {
-      const balance = refreshed.leaveBalance;
+    const validation = await validateLeaveBreakdownApplication({
+      employeeId: refreshed.id,
+      balance: refreshed.leaveBalance,
+      breakdown,
+      totalDays,
+      start,
+      end,
+      sandwichDays,
+    });
 
-      if (leaveType === "CL") {
-        const policy = await getLeavePolicy();
-        const clInfo = await getClHalfYearInfo(refreshed.id, policy.annualCl, new Date(), {
-          includePending: true,
-        });
-
-        const clCheck = await validateClLeaveRequest(
-          refreshed.id,
-          policy.annualCl,
-          start,
-          end
-        );
-        if (!clCheck.ok) {
-          return sendError(res, clCheck.message ?? "CL limit exceeded for this period.");
-        }
-
-        if (totalDays > clInfo.annualRemaining) {
-          const sandwichNote =
-            sandwichDays > 0 ? ` (includes ${sandwichDays} sandwich day(s))` : "";
-          return sendError(
-            res,
-            `Insufficient CL balance. Required: ${totalDays}${sandwichNote}. Available after pending requests: ${clInfo.annualRemaining} day(s). Leave is deducted only after admin approval.`
-          );
-        }
-
-        if (totalDays > clInfo.available) {
-          const halfLabel = clInfo.currentHalf === "H1" ? "Apr–Sep" : "Oct–Mar";
-          return sendError(
-            res,
-            `You can use only ${clInfo.available} CL day(s) in ${halfLabel} (half-year limit). Leave is deducted only after admin approval.`
-          );
-        }
-      } else {
-        const pendingSameType = await getPendingLeaveDays(
-          refreshed.id,
-          leaveType as LeaveType
-        );
-        const balanceMap: Record<string, number> = {
-          PL: balance.pl,
-          SL: balance.sl,
-        };
-        const available = balanceMap[leaveType] - pendingSameType;
-
-        if (totalDays > available) {
-          const sandwichNote =
-            sandwichDays > 0 ? ` (includes ${sandwichDays} sandwich day(s))` : "";
-          const pendingNote =
-            pendingSameType > 0 ? ` (${pendingSameType} day(s) already in pending requests)` : "";
-          return sendError(
-            res,
-            `Insufficient ${leaveType} leave balance. Required: ${totalDays}${sandwichNote}. Available: ${Math.max(0, available)} day(s)${pendingNote}. Leave is deducted only after admin approval.`
-          );
-        }
-      }
+    if (!validation.ok) {
+      return sendError(res, validation.message);
     }
+
+    const leaveTypeLabel = resolveLeaveTypeLabel(breakdown);
 
     const leaveRequest = await prisma.leaveRequest.create({
       data: {
         employeeId: refreshed.id,
-        leaveType,
+        leaveType: leaveTypeLabel,
+        leaveBreakdown: breakdown,
         startDate: start,
         endDate: end,
         reason,
@@ -359,84 +327,31 @@ export const updateLeaveStatus = async (req: Request, res: Response) => {
     const { employee } = leaveRequest;
 
     if (status === "APPROVED") {
-      const days =
-        leaveRequest.days ??
-        calculateLeaveDays(leaveRequest.startDate, leaveRequest.endDate).totalDays;
+      const breakdown = getRequestBreakdown(leaveRequest);
       const balance = employee.leaveBalance;
 
-      if (leaveRequest.leaveType === "CL") {
-        const policy = await getLeavePolicy();
-        const clInfo = await getClHalfYearInfo(employee.id, policy.annualCl);
-        const clCheck = await validateClLeaveRequest(
-          employee.id,
-          policy.annualCl,
-          leaveRequest.startDate,
-          leaveRequest.endDate,
-          leaveRequest.id
-        );
-        if (!clCheck.ok) {
-          return sendError(res, clCheck.message ?? "Cannot approve: CL half-year limit exceeded.");
-        }
-        if (days > clInfo.annualRemaining) {
-          return sendError(
-            res,
-            `Insufficient CL balance to approve (${days} days required, ${clInfo.annualRemaining} annual remaining).`
-          );
-        }
-        if (days > clInfo.available) {
-          const halfLabel = clInfo.currentHalf === "H1" ? "Apr–Sep" : "Oct–Mar";
-          return sendError(
-            res,
-            `Cannot approve: only ${clInfo.available} CL day(s) allowed in ${halfLabel}.`
-          );
-        }
+      if (!balance) {
+        return sendError(res, "Leave balance not found.", 404);
       }
 
-      if (leaveRequest.leaveType === "LWP") {
-        if (balance) {
-          await prisma.leaveBalance.update({
-            where: { id: balance.id },
-            data: { lwpUsed: balance.lwpUsed + days },
-          });
-        }
-      } else if (PAID_LEAVE_TYPES.includes(leaveRequest.leaveType as LeaveType) && balance) {
-        const fieldMap: Record<string, "pl" | "cl" | "sl"> = {
-          PL: "pl",
-          CL: "cl",
-          SL: "sl",
-        };
+      const approvalCheck = await validateLeaveBreakdownApproval({
+        employeeId: employee.id,
+        balance,
+        breakdown,
+        start: leaveRequest.startDate,
+        end: leaveRequest.endDate,
+        excludeRequestId: leaveRequest.id,
+      });
 
-        const field = fieldMap[leaveRequest.leaveType];
-        if (field === "cl") {
-          // CL balance validated above via half-year rules; sync after approval.
-        } else if (field) {
-          const pendingOther = await getPendingLeaveDays(
-            employee.id,
-            leaveRequest.leaveType as LeaveType,
-            leaveRequest.id
-          );
-          const available = balance[field] - pendingOther;
-          if (days > available) {
-            return sendError(
-              res,
-              `Insufficient ${leaveRequest.leaveType} balance to approve (${days} days required, ${Math.max(0, available)} available).`
-            );
-          }
-        }
-
-        if (field) {
-          await prisma.leaveBalance.update({
-            where: { id: balance.id },
-            data: {
-              [field]: field === "cl" ? Math.max(0, balance.cl - days) : balance[field] - days,
-            },
-          });
-        }
+      if (!approvalCheck.ok) {
+        return sendError(res, approvalCheck.message);
       }
 
+      await deductApprovedLeaveBreakdown(balance.id, balance, breakdown);
       await refreshEmployeeLeaveBalances(employee.id);
 
       if (!leaveRequest.days) {
+        const days = calculateLeaveDays(leaveRequest.startDate, leaveRequest.endDate).totalDays;
         await prisma.leaveRequest.update({
           where: { id },
           data: {

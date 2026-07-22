@@ -6,6 +6,7 @@ import { refreshEmployeeLeaveBalances } from "./leaveSync";
 import { getClHalfYearInfo } from "./leaveClHalfYear";
 import { getCompletedMonthPeriods } from "./leaveCalendar";
 import { batchGetEmployeeLeaveSummaries } from "./leaveSummaryBatch";
+import { addBreakdownToUsage, emptyLeaveBreakdown, getRequestBreakdown } from "./leaveBreakdown";
 
 export type LeaveUsageBreakdown = {
   PL: number;
@@ -17,16 +18,13 @@ export type LeaveUsageBreakdown = {
 export async function getApprovedLeaveUsage(employeeId: string): Promise<LeaveUsageBreakdown> {
   const requests = await prisma.leaveRequest.findMany({
     where: { employeeId, status: "APPROVED" },
-    select: { leaveType: true, days: true },
+    select: { leaveType: true, days: true, leaveBreakdown: true },
   });
 
-  const usage: LeaveUsageBreakdown = { PL: 0, CL: 0, SL: 0, LWP: 0 };
+  let usage = emptyLeaveBreakdown();
 
   for (const request of requests) {
-    const type = request.leaveType as LeaveType;
-    if (type in usage) {
-      usage[type] += request.days ?? 0;
-    }
+    usage = addBreakdownToUsage(usage, getRequestBreakdown(request));
   }
 
   return usage;

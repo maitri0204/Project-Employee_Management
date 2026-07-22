@@ -1,6 +1,7 @@
 import prisma from "../config/database";
-import { getFinancialYear, parseDateOnly } from "./leaveCalendar";
+import { getFinancialYear } from "./leaveCalendar";
 import { calculateLeaveDays } from "./leaveCalculation";
+import { getRequestBreakdown } from "./leaveBreakdown";
 
 export type FinancialHalf = "H1" | "H2";
 
@@ -24,10 +25,10 @@ function overlapLeaveDays(
   rangeStart: Date,
   rangeEnd: Date
 ): number {
-  const start = parseDateOnly(leaveStart);
-  const end = parseDateOnly(leaveEnd);
-  const rangeS = parseDateOnly(rangeStart);
-  const rangeE = parseDateOnly(rangeEnd);
+  const start = new Date(leaveStart.getFullYear(), leaveStart.getMonth(), leaveStart.getDate());
+  const end = new Date(leaveEnd.getFullYear(), leaveEnd.getMonth(), leaveEnd.getDate());
+  const rangeS = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), rangeStart.getDate());
+  const rangeE = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), rangeEnd.getDate());
 
   const overlapStart = start > rangeS ? start : rangeS;
   const overlapEnd = end < rangeE ? end : rangeE;
@@ -36,55 +37,38 @@ function overlapLeaveDays(
   return calculateLeaveDays(overlapStart, overlapEnd).totalDays;
 }
 
-type ClRequestRow = { startDate: Date; endDate: Date };
+type LeaveRequestRow = {
+  startDate: Date;
+  endDate: Date;
+  leaveType: string;
+  days: number | null;
+  leaveBreakdown: unknown;
+};
 
 type FetchClOptions = {
   excludeRequestId?: string;
-  /** When true, pending requests count toward limits (apply/approve validation). */
   includePending?: boolean;
 };
 
-async function fetchClRequests(
+async function fetchLeaveRequestsForCl(
   employeeId: string,
   options: FetchClOptions = {}
-): Promise<ClRequestRow[]> {
+): Promise<LeaveRequestRow[]> {
   const statuses = options.includePending ? ["APPROVED", "PENDING"] : ["APPROVED"];
   return prisma.leaveRequest.findMany({
     where: {
       employeeId,
-      leaveType: "CL",
       status: { in: statuses },
       ...(options.excludeRequestId ? { NOT: { id: options.excludeRequestId } } : {}),
     },
-    select: { startDate: true, endDate: true },
+    select: {
+      startDate: true,
+      endDate: true,
+      leaveType: true,
+      days: true,
+      leaveBreakdown: true,
+    },
   });
-}
-
-function sumClDaysInHalf(
-  requests: ClRequestRow[],
-  startYear: number,
-  half: FinancialHalf
-): number {
-  const { h1Start, h1End, h2Start, h2End } = getFinancialYearHalfRanges(startYear);
-  const rangeStart = half === "H1" ? h1Start : h2Start;
-  const rangeEnd = half === "H1" ? h1End : h2End;
-
-  return requests.reduce(
-    (sum, request) =>
-      sum + overlapLeaveDays(request.startDate, request.endDate, rangeStart, rangeEnd),
-    0
-  );
-}
-
-/** Sum CL days (approved + pending) that fall within a FY half. */
-export async function getClDaysInHalf(
-  employeeId: string,
-  startYear: number,
-  half: FinancialHalf,
-  options: FetchClOptions = {}
-): Promise<number> {
-  const requests = await fetchClRequests(employeeId, options);
-  return sumClDaysInHalf(requests, startYear, half);
 }
 
 export function splitClDaysByHalf(
@@ -97,6 +81,34 @@ export function splitClDaysByHalf(
     h1Days: overlapLeaveDays(startDate, endDate, h1Start, h1End),
     h2Days: overlapLeaveDays(startDate, endDate, h2Start, h2End),
   };
+}
+
+function allocateClDaysToHalf(
+  request: LeaveRequestRow,
+  startYear: number,
+  half: FinancialHalf
+): number {
+  const clDays = getRequestBreakdown(request).CL;
+  if (clDays <= 0) return 0;
+
+  const { h1Days, h2Days } = splitClDaysByHalf(request.startDate, request.endDate, startYear);
+  const totalWorking = h1Days + h2Days;
+
+  if (totalWorking === 0) {
+    const inH1 = getCurrentFinancialHalf(request.startDate) === "H1";
+    return half === "H1" ? (inH1 ? clDays : 0) : inH1 ? 0 : clDays;
+  }
+
+  const inHalf = half === "H1" ? h1Days : h2Days;
+  return Math.round((clDays * inHalf) / totalWorking);
+}
+
+function sumClDaysInHalf(
+  requests: LeaveRequestRow[],
+  startYear: number,
+  half: FinancialHalf
+): number {
+  return requests.reduce((sum, request) => sum + allocateClDaysToHalf(request, startYear, half), 0);
 }
 
 export type ClHalfYearInfo = {
@@ -155,39 +167,55 @@ export async function getClHalfYearInfo(
   options: FetchClOptions = {}
 ): Promise<ClHalfYearInfo> {
   const { startYear } = getFinancialYear(referenceDate);
-  const requests = await fetchClRequests(employeeId, options);
+  const requests = await fetchLeaveRequestsForCl(employeeId, options);
   const h1Used = sumClDaysInHalf(requests, startYear, "H1");
   const h2Used = sumClDaysInHalf(requests, startYear, "H2");
   return buildClHalfYearInfo(annualCl, h1Used, h2Used, referenceDate);
 }
 
-export async function validateClLeaveRequest(
+function allocateNewClDaysToHalves(
+  clDays: number,
+  startDate: Date,
+  endDate: Date,
+  startYear: number
+): { clH1: number; clH2: number } {
+  const { h1Days, h2Days } = splitClDaysByHalf(startDate, endDate, startYear);
+  const totalWorking = h1Days + h2Days;
+
+  if (totalWorking === 0) {
+    const half = getCurrentFinancialHalf(startDate);
+    return half === "H1" ? { clH1: clDays, clH2: 0 } : { clH1: 0, clH2: clDays };
+  }
+
+  const clH1 = Math.round((clDays * h1Days) / totalWorking);
+  return { clH1, clH2: clDays - clH1 };
+}
+
+export async function validateClDayAllocation(
   employeeId: string,
   annualCl: number,
+  clDays: number,
   startDate: Date,
   endDate: Date,
   excludeRequestId?: string
 ): Promise<{ ok: boolean; message?: string }> {
-  const { startYear } = getFinancialYear(startDate);
-  const { h1Days, h2Days } = splitClDaysByHalf(startDate, endDate, startYear);
-  const requestDays = h1Days + h2Days;
+  if (clDays <= 0) return { ok: true };
 
-  if (requestDays === 0) {
-    return { ok: true };
-  }
+  const { startYear } = getFinancialYear(startDate);
+  const { clH1, clH2 } = allocateNewClDaysToHalves(clDays, startDate, endDate, startYear);
 
   const firstHalfMax = Math.floor(annualCl / 2);
   const secondHalfMax = annualCl - firstHalfMax;
 
-  const requests = await fetchClRequests(employeeId, {
+  const requests = await fetchLeaveRequestsForCl(employeeId, {
     includePending: true,
     excludeRequestId,
   });
   const h1Used = sumClDaysInHalf(requests, startYear, "H1");
   const h2Used = sumClDaysInHalf(requests, startYear, "H2");
 
-  const newH1Used = h1Used + h1Days;
-  const newH2Used = h2Used + h2Days;
+  const newH1Used = h1Used + clH1;
+  const newH2Used = h2Used + clH2;
 
   if (newH1Used > firstHalfMax) {
     const left = Math.max(0, firstHalfMax - h1Used);
@@ -211,9 +239,31 @@ export async function validateClLeaveRequest(
   if (newH1Used + newH2Used > annualCl) {
     return {
       ok: false,
-      message: `Annual CL limit is ${annualCl} day(s). Only ${annualCl - h1Used - h2Used} day(s) remain this year.`,
+      message: `Annual CL limit is ${annualCl} day(s). Only ${Math.max(0, annualCl - h1Used - h2Used)} day(s) remain this year.`,
     };
   }
 
   return { ok: true };
+}
+
+/** Full-range CL validation (legacy single-type CL requests). */
+export async function validateClLeaveRequest(
+  employeeId: string,
+  annualCl: number,
+  startDate: Date,
+  endDate: Date,
+  excludeRequestId?: string
+): Promise<{ ok: boolean; message?: string }> {
+  const { startYear } = getFinancialYear(startDate);
+  const { h1Days, h2Days } = splitClDaysByHalf(startDate, endDate, startYear);
+  const requestDays = h1Days + h2Days;
+  if (requestDays === 0) return { ok: true };
+  return validateClDayAllocation(
+    employeeId,
+    annualCl,
+    requestDays,
+    startDate,
+    endDate,
+    excludeRequestId
+  );
 }

@@ -1,6 +1,8 @@
 export type Role = "ADMIN" | "EMPLOYEE";
 export type LeaveStatus = "PENDING" | "APPROVED" | "REJECTED";
 export type LeaveType = "PL" | "CL" | "SL" | "LWP";
+
+export type LeaveBreakdown = Record<LeaveType, number>;
 export type Gender = "MALE" | "FEMALE" | "OTHER" | "PREFER_NOT_TO_SAY";
 export type { JobRole, AccountType } from "@/constants/employee";
 
@@ -183,7 +185,8 @@ export interface Employee {
 export interface LeaveRequest {
   id: string;
   employeeId: string;
-  leaveType: LeaveType;
+  leaveType: string;
+  leaveBreakdown?: LeaveBreakdown | null;
   startDate: string;
   endDate: string;
   reason: string;
@@ -219,8 +222,8 @@ export interface AuthResponse {
 }
 
 export interface ApplyLeaveData {
-  leaveType: LeaveType;
   startDate: string;
   endDate: string;
   reason: string;
+  leaveBreakdown: LeaveBreakdown;
 }

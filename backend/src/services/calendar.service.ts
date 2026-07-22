@@ -9,6 +9,7 @@ import {
   parseDateOnly,
 } from "./leaveCalendar";
 import { getCompanyHolidayName, getCompanyHolidaysInRange } from "../data/companyHolidays";
+import { formatLeaveBreakdownLabel, getRequestBreakdown } from "./leaveBreakdown";
 
 export type CalendarLeaveEntry = {
   id: string;
@@ -95,7 +96,7 @@ export async function getCalendarForMonth(
         id: request.id,
         employeeId: request.employeeId,
         employeeName: formatEmployeeName(request.employee),
-        leaveType: request.leaveType,
+        leaveType: formatLeaveBreakdownLabel(getRequestBreakdown(request)),
         status: request.status,
         startDate: request.startDate.toISOString(),
         endDate: request.endDate.toISOString(),

@@ -91,6 +91,7 @@ model LeaveRequest {
   employeeId   String   @db.ObjectId
   employee     Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
   leaveType    String
+  leaveBreakdown Json?
   startDate    DateTime
   endDate      DateTime
   reason       String

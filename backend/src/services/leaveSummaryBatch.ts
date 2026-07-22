@@ -1,24 +1,20 @@
 import prisma from "../config/database";
-import { LeaveType } from "../types";
 import { getCompletedMonthPeriods } from "./leaveCalendar";
 import { getLeavePolicy } from "./leavePolicy";
 import { processMonthlyPlAccrual } from "./leaveAccrual";
 import { LeaveUsageBreakdown } from "./leaveUsage";
+import { addBreakdownToUsage, emptyLeaveBreakdown, getRequestBreakdown } from "./leaveBreakdown";
 
-const emptyUsage = (): LeaveUsageBreakdown => ({ PL: 0, CL: 0, SL: 0, LWP: 0 });
+const emptyUsage = (): LeaveUsageBreakdown => emptyLeaveBreakdown();
 
 function accumulateUsage(
   map: Map<string, LeaveUsageBreakdown>,
   employeeId: string,
-  leaveType: string,
-  days: number
+  request: { leaveType: string; days?: number | null; leaveBreakdown?: unknown }
 ) {
   const usage = map.get(employeeId) ?? emptyUsage();
-  const type = leaveType as LeaveType;
-  if (type in usage) {
-    usage[type] += days;
-  }
-  map.set(employeeId, usage);
+  const breakdown = getRequestBreakdown(request);
+  map.set(employeeId, addBreakdownToUsage(usage, breakdown));
 }
 
 export type LeaveTotals = { PL: number; CL: number; SL: number };
@@ -48,7 +44,7 @@ export async function batchGetEmployeeLeaveSummaries(
     prisma.leaveBalance.findMany({ where: { employeeId: { in: employeeIds } } }),
     prisma.leaveRequest.findMany({
       where: { employeeId: { in: employeeIds }, status: "APPROVED" },
-      select: { employeeId: true, leaveType: true, days: true },
+      select: { employeeId: true, leaveType: true, days: true, leaveBreakdown: true },
     }),
     prisma.employee.findMany({
       where: { id: { in: employeeIds } },
@@ -60,7 +56,7 @@ export async function batchGetEmployeeLeaveSummaries(
   const usageMap = new Map<string, LeaveUsageBreakdown>();
 
   for (const request of approvedRequests) {
-    accumulateUsage(usageMap, request.employeeId, request.leaveType, request.days ?? 0);
+    accumulateUsage(usageMap, request.employeeId, request);
   }
 
   for (const employee of employees) {

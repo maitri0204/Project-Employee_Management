@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import { leaveApi } from "@/lib/services";
+import { formatLeaveBreakdownLabel } from "@/lib/leaveBreakdown";
 import { formatUsedTotal, getLeaveTotals } from "@/lib/leaveFormat";
 import { EmployeeLeaveUsageRow, LeaveRequest } from "@/types";
 import { Badge, Button, Card } from "@/components/ui";
@@ -191,7 +192,11 @@ export default function AdminLeavesPage() {
                           <p className="font-medium text-black">{formatReqName(req)}</p>
                           <p className="text-xs text-black">{req.employee?.user?.email}</p>
                         </td>
-                        <td className="px-6 py-4 text-black">{req.leaveType}</td>
+                        <td className="px-6 py-4 text-black">
+                          {req.leaveBreakdown
+                            ? formatLeaveBreakdownLabel(req.leaveBreakdown)
+                            : req.leaveType}
+                        </td>
                         <td className="px-6 py-4 text-black">
                           {new Date(req.startDate).toLocaleDateString()} –{" "}
                           {new Date(req.endDate).toLocaleDateString()}
