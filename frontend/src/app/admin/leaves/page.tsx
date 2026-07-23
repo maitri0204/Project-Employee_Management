@@ -352,7 +352,7 @@ export default function AdminLeavesPage() {
           <Card className="overflow-hidden p-0">
             {usageData && (
               <p className="border-b border-slate-100 px-6 py-3 text-sm text-slate-600">
-                Financial year: <strong>{usageData.financialYear}</strong> (April – March)
+                Financial year: <strong>{usageData.financialYear}</strong> (April - March)
               </p>
             )}
             <div className="overflow-x-auto">

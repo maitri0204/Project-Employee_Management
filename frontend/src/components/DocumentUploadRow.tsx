@@ -26,6 +26,8 @@ type DocumentUploadRowProps = {
   actions?: React.ReactNode;
   /** Restrict actions for employee self-service (view-only when approved, upload-only when rejected). */
   employeeView?: boolean;
+  /** Always show upload for multi-file add-more rows (until profile lock). */
+  alwaysShowUpload?: boolean;
 };
 
 function statusBadgeVariant(
@@ -89,7 +91,7 @@ function DocumentPreview({
           <img
             src={previewUrl}
             alt={label}
-            className="max-h-[420px] w-full rounded-lg object-contain"
+            className="max-h-[min(70vh,720px)] w-full rounded-lg object-contain"
           />
         </div>
       )}
@@ -97,7 +99,7 @@ function DocumentPreview({
         <iframe
           src={previewUrl}
           title={`${label} preview`}
-          className="h-[420px] w-full bg-white"
+          className="h-[min(70vh,720px)] w-full bg-white"
         />
       )}
       {!image && !pdf && (
@@ -128,6 +130,7 @@ export default function DocumentUploadRow({
   onFilesSelect,
   actions,
   employeeView = false,
+  alwaysShowUpload = false,
 }: DocumentUploadRowProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -163,9 +166,11 @@ export default function DocumentUploadRow({
   const showReuploadButton = employeeView
     ? isPending && hasFile && editable && !disabled
     : hasFile && editable && !disabled && !isApproved;
-  const showUploadButton = employeeView
-    ? (isRejected || status === "NOT_SUBMITTED") && editable && !disabled
-    : !hasFile && editable && !disabled;
+  const showUploadButton = alwaysShowUpload
+    ? editable && !disabled
+    : employeeView
+      ? (isRejected || status === "NOT_SUBMITTED") && editable && !disabled
+      : !hasFile && editable && !disabled;
 
   const openPicker = () => {
     if (!disabled && editable) inputRef.current?.click();

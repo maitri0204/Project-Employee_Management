@@ -38,7 +38,7 @@ async function main() {
 
   console.log("Seed complete:");
   console.log("  Admin: maitripatel2608@gmail.com");
-  console.log("\nLogin with OTP – check server console for the 6-digit code.");
+  console.log("\nLogin with OTP - check server console for the 6-digit code.");
 }
 
 main()

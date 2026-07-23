@@ -72,7 +72,7 @@ export async function creditPendingPlForEmployee(
   return monthsCredited;
 }
 
-/** Credit or reset CL/SL for financial year (April–March). PL is not touched (carry forward). */
+/** Credit or reset CL/SL for financial year (April-March). PL is not touched (carry forward). */
 export async function creditClSlForFinancialYear(
   employeeId: string,
   referenceDate = new Date()

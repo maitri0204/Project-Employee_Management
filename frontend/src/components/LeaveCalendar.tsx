@@ -391,7 +391,7 @@ export default function LeaveCalendar({
                           </span>
                         </div>
                         <p className="mt-2 text-xs text-slate-500">
-                          {new Date(leave.startDate).toLocaleDateString("en-IN")} –{" "}
+                          {new Date(leave.startDate).toLocaleDateString("en-IN")} -{" "}
                           {new Date(leave.endDate).toLocaleDateString("en-IN")}
                         </p>
                       </div>
@@ -428,7 +428,7 @@ export default function LeaveCalendar({
                   Leave period
                 </dt>
                 <dd className="mt-1 font-medium text-slate-900">
-                  {new Date(selectedLeave.startDate).toLocaleDateString("en-IN")} –{" "}
+                  {new Date(selectedLeave.startDate).toLocaleDateString("en-IN")} -{" "}
                   {new Date(selectedLeave.endDate).toLocaleDateString("en-IN")}
                 </dd>
               </div>

@@ -418,7 +418,7 @@ export default function LeavesPage() {
                     {balance?.clHalfYear && leaveBreakdown.CL > 0 && (
                       <p className="mt-3 text-xs text-slate-600">
                         CL usable this half (
-                        {balance.clHalfYear.currentHalf === "H1" ? "Apr–Sep" : "Oct–Mar"}):{" "}
+                        {balance.clHalfYear.currentHalf === "H1" ? "Apr-Sep" : "Oct-Mar"}):{" "}
                         <strong>{balance.clUsableThisHalf ?? balance.clHalfYear.available}</strong>
                       </p>
                     )}
@@ -499,7 +499,7 @@ export default function LeavesPage() {
                           </p>
                         )}
                         <p className="mt-2 text-sm font-medium text-slate-800">
-                          {new Date(req.startDate).toLocaleDateString("en-IN")} –{" "}
+                          {new Date(req.startDate).toLocaleDateString("en-IN")} -{" "}
                           {new Date(req.endDate).toLocaleDateString("en-IN")}
                         </p>
                         <p className="text-xs text-slate-500">

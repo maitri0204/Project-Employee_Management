@@ -259,7 +259,10 @@ export const updateMyProfile = async (req: Request, res: Response) => {
           }),
         ...(degreeCertificates.length > 0 &&
           canEmployeeEditDocument(employee, "degreeCertificates") && {
-            degreeCertificateUrls: getFileUrls(degreeCertificates),
+            degreeCertificateUrls: [
+              ...(employee.degreeCertificateUrls ?? []),
+              ...getFileUrls(degreeCertificates),
+            ],
           }),
       },
       include: {

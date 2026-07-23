@@ -218,7 +218,7 @@ function EmployeeDashboard() {
                   {balance.clUsableThisHalf !== undefined && (
                     <p className="mt-1 text-xs text-emerald-800">
                       Usable this half (
-                      {balance.clHalfYear?.currentHalf === "H1" ? "Apr–Sep" : "Oct–Mar"}):{" "}
+                      {balance.clHalfYear?.currentHalf === "H1" ? "Apr-Sep" : "Oct-Mar"}):{" "}
                       {balance.clUsableThisHalf}
                     </p>
                   )}
@@ -236,7 +236,7 @@ function EmployeeDashboard() {
               </div>
               {balance.financialYear && (
                 <p className="text-xs text-slate-500">
-                  Financial year {balance.financialYear} · CL is split Apr–Sep / Oct–Mar from
+                  Financial year {balance.financialYear} · CL is split Apr-Sep / Oct-Mar from
                   April (unused from first half carries forward) · PL carries forward yearly
                 </p>
               )}

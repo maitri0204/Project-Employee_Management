@@ -159,6 +159,7 @@ export function canEmployeeEditDocument(
   key: DocumentKey
 ): boolean {
   if (emp.isProfileLocked) return false;
+  if (key === "degreeCertificates") return true;
   const review = getDocumentReview(emp, key);
   return review.status !== "APPROVED";
 }

@@ -122,12 +122,22 @@ export function canEmployeeEditDocument(
   key: DocumentKey
 ): boolean {
   if (!employee || employee.isProfileLocked) return false;
+  if (key === "degreeCertificates") return true;
   return getDocumentReview(employee, key).status !== "APPROVED";
+}
+
+export function canEmployeeAddDegreeCertificates(employee?: Employee | null): boolean {
+  return canEmployeeEditProfile(employee);
 }
 
 export function canEmployeeEditDocuments(employee?: Employee | null): boolean {
   if (!employee || employee.isProfileLocked) return false;
-  return DOCUMENT_ITEMS.some(({ key }) => canEmployeeEditDocument(employee, key));
+  return (
+    canEmployeeAddDegreeCertificates(employee) ||
+    DOCUMENT_ITEMS.some(
+      ({ key }) => key !== "degreeCertificates" && canEmployeeEditDocument(employee, key)
+    )
+  );
 }
 
 export function canEmployeeEditProfile(employee?: Employee | null): boolean {

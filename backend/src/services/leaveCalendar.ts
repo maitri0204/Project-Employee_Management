@@ -78,7 +78,7 @@ export function getEffectiveJoiningDate(addedDate: Date): Date {
   return new Date(parsed.getFullYear(), parsed.getMonth(), 1);
 }
 
-/** Indian financial year: April to March (e.g. Apr 2025 – Mar 2026 → "2025-26"). */
+/** Indian financial year: April to March (e.g. Apr 2025 - Mar 2026 → "2025-26"). */
 export function getFinancialYear(reference = new Date()): {
   label: string;
   startYear: number;

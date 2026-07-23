@@ -61,7 +61,7 @@ export default function LeaveAssignPage() {
           <h1 className="text-2xl font-bold text-black">Leave Assign</h1>
           <p className="mt-1 text-sm text-black">
             Assign leave entitlements for all employees. PL accrues monthly (end of month, based on
-            joining date). CL/SL reset each financial year (April–March). PL carries forward.
+            joining date). CL/SL reset each financial year (April-March). PL carries forward.
           </p>
         </div>
 
@@ -110,7 +110,7 @@ export default function LeaveAssignPage() {
 
             <div className="border-t border-slate-100 pt-6">
               <h2 className="mb-3 text-sm font-semibold text-blue-700">
-                CL & SL - Annual (Financial Year Apr–Mar)
+                CL & SL - Annual (Financial Year Apr-Mar)
               </h2>
               <div className="grid gap-4 md:grid-cols-2">
                 <Input
@@ -131,8 +131,8 @@ export default function LeaveAssignPage() {
                 />
               </div>
               <p className="mt-2 text-xs text-slate-500">
-                CL is split across the financial year: half in Apr–Sep, half in Oct–Mar. Unused CL
-                from Apr–Sep carries forward to Oct–Mar. SL resets each April.
+                CL is split across the financial year: half in Apr-Sep, half in Oct-Mar. Unused CL
+                from Apr-Sep carries forward to Oct-Mar. SL resets each April.
               </p>
             </div>
 

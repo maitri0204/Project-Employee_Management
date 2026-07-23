@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { City, Country, State } from "country-state-city";
 import { ACCOUNT_TYPES, GENDER_OPTIONS, JOB_ROLES } from "@/constants/employee";
-import { canEmployeeEditDocument, DOCUMENT_HINTS, DOCUMENT_LABELS, getDocumentReview, getDocumentUrls } from "@/lib/employeeProfile";
+import { canEmployeeAddDegreeCertificates, canEmployeeEditDocument, DOCUMENT_HINTS, DOCUMENT_LABELS, getDocumentReview, getDocumentUrls } from "@/lib/employeeProfile";
 import {
   mapApiErrorToField,
   validateEmployeeProfileForm,
@@ -654,7 +654,8 @@ export default function EmployeeOnboardingForm({
             const key: DocumentKey = "degreeCertificates";
             const review = getDocumentReview(employee, key);
             const urls = getDocumentUrls(employee, key);
-            const editable = mode === "admin" || canEmployeeEditDocument(employee, key);
+            const canAddCertificates =
+              mode === "admin" || canEmployeeAddDegreeCertificates(employee);
             const hasPending = Boolean(files.degreeCertificates?.length);
 
             return (
@@ -681,31 +682,24 @@ export default function EmployeeOnboardingForm({
                     hint="Uploaded degree certificate"
                     status={review.status}
                     fileUrl={url}
-                    editable={editable && review.status !== "APPROVED"}
+                    editable={false}
                     disabled={disabled}
                     employeeView={mode === "employee"}
                   />
                 ))}
 
-                {editable && !disabled && review.status !== "APPROVED" && (
+                {canAddCertificates && !disabled && (
                   <DocumentUploadRow
                     label={urls.length ? "Add more certificates" : "Degree Certificates"}
                     hint="Select one or more certificate files"
                     required={!urls.length && !hasPending}
-                    status={
-                      hasPending
-                        ? "PENDING_REVIEW"
-                        : urls.length
-                          ? review.status
-                          : review.status === "REJECTED"
-                            ? "REJECTED"
-                            : "NOT_SUBMITTED"
-                    }
+                    status={hasPending ? "PENDING_REVIEW" : "NOT_SUBMITTED"}
                     selectedFile={files.degreeCertificates?.[0]}
                     error={fieldErrors.degreeCertificates}
                     editable
                     disabled={disabled}
                     employeeView={mode === "employee"}
+                    alwaysShowUpload
                     multiple
                     onFilesSelect={(selected) => updateFile("degreeCertificates", selected)}
                   />
@@ -721,8 +715,10 @@ export default function EmployeeOnboardingForm({
                   </div>
                 )}
 
-                {review.status === "APPROVED" && urls.length > 0 && (
-                  <p className="text-xs font-medium text-emerald-700">Approved - cannot be changed</p>
+                {review.status === "APPROVED" && urls.length > 0 && canAddCertificates && (
+                  <p className="text-xs font-medium text-emerald-700">
+                    Existing certificates are approved. You can add more until your profile is locked.
+                  </p>
                 )}
               </div>
             );

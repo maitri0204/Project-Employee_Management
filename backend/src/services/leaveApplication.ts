@@ -61,7 +61,7 @@ export async function validateLeaveBreakdownApplication(params: {
     }
 
     if (breakdown.CL > clInfo.available) {
-      const halfLabel = clInfo.currentHalf === "H1" ? "Apr–Sep" : "Oct–Mar";
+      const halfLabel = clInfo.currentHalf === "H1" ? "Apr-Sep" : "Oct-Mar";
       return {
         ok: false,
         message: `You can use only ${clInfo.available} CL day(s) in ${halfLabel} (half-year limit). Leave is deducted only after admin approval.`,

@@ -11,7 +11,7 @@ export const getMonthCalendar = async (req: Request, res: Response) => {
     const month = parseInt(String(req.query.month), 10);
 
     if (!year || !month || month < 1 || month > 12) {
-      return sendError(res, "Please provide valid year and month (1–12).");
+      return sendError(res, "Please provide valid year and month (1-12).");
     }
 
     const calendar = await getCalendarForMonth(year, month, user);

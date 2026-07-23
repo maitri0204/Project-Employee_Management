@@ -209,7 +209,7 @@ export const getMyLeaveOverview = async (req: Request, res: Response) => {
     const month = parseInt(String(req.query.month), 10) || now.getMonth() + 1;
 
     if (month < 1 || month > 12) {
-      return sendError(res, "Please provide a valid month (1–12).");
+      return sendError(res, "Please provide a valid month (1-12).");
     }
 
     const employee = await prisma.employee.findUnique({

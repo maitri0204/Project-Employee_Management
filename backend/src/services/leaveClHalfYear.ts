@@ -221,7 +221,7 @@ export async function validateClDayAllocation(
     const left = Math.max(0, firstHalfMax - h1Used);
     return {
       ok: false,
-      message: `CL limit for Apr–Sep is ${firstHalfMax} day(s). You have ${left} day(s) left in this half.`,
+      message: `CL limit for Apr-Sep is ${firstHalfMax} day(s). You have ${left} day(s) left in this half.`,
     };
   }
 
@@ -232,7 +232,7 @@ export async function validateClDayAllocation(
     const left = Math.max(0, h2Limit - h2Used);
     return {
       ok: false,
-      message: `CL limit for Oct–Mar is ${h2Limit} day(s) (including ${carriedToH2} carried from Apr–Sep). You have ${left} day(s) left.`,
+      message: `CL limit for Oct-Mar is ${h2Limit} day(s) (including ${carriedToH2} carried from Apr-Sep). You have ${left} day(s) left.`,
     };
   }
 
