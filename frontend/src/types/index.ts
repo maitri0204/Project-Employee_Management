@@ -254,3 +254,39 @@ export interface ApplyLeaveData {
   reason: string;
   leaveBreakdown: LeaveBreakdown;
 }
+
+export type DailyTaskStatus = "PLANNED" | "COMPLETED";
+
+export interface DailyTask {
+  id: string;
+  employeeId: string;
+  taskDate: string;
+  title: string;
+  description?: string | null;
+  status: DailyTaskStatus;
+  completedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  employee?: Pick<Employee, "id" | "firstName" | "middleName" | "lastName" | "jobRole"> & {
+    user?: { email: string };
+  };
+}
+
+export interface DailyTaskSummary {
+  date: string;
+  employees: {
+    employeeId: string;
+    employeeName: string;
+    jobRole?: string | null;
+    email?: string;
+    planned: number;
+    completed: number;
+    total: number;
+  }[];
+  totals: {
+    employees: number;
+    tasks: number;
+    completed: number;
+    planned: number;
+  };
+}

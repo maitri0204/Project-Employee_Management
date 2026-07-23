@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { CalendarDays, FileText, LayoutDashboard, LogOut, UserCircle } from "lucide-react";
+import { CalendarDays, CheckSquare, FileText, LayoutDashboard, LogOut, UserCircle } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 
 const employeeNav = [
@@ -17,6 +17,11 @@ const employeeNav = [
     label: "Leaves & Calendar",
     href: "/leaves",
     icon: <CalendarDays className="h-5 w-5" />,
+  },
+  {
+    label: "Daily Tasks",
+    href: "/tasks",
+    icon: <CheckSquare className="h-5 w-5" />,
   },
   {
     label: "My Profile",

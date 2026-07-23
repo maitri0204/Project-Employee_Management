@@ -13,6 +13,9 @@ import {
   HrPolicyDocument,
   CalendarMonthData,
   LeaveOverview,
+  DailyTask,
+  DailyTaskSummary,
+  DailyTaskStatus,
 } from "@/types";
 
 export const authApi = {
@@ -81,4 +84,23 @@ export const calendarApi = {
   getMonth: (year: number, month: number) =>
     api.get<CalendarMonthData>(`/calendar?year=${year}&month=${month}`),
   getHolidays: () => api.get<{ date: string; name: string }[]>("/calendar/holidays"),
+};
+
+export const dailyTaskApi = {
+  create: (data: { title: string; description?: string; taskDate?: string }) =>
+    api.post<DailyTask>("/daily-tasks", data),
+  getMy: (date: string) =>
+    api.get<DailyTask[]>(`/daily-tasks/my?date=${encodeURIComponent(date)}`),
+  update: (
+    id: string,
+    data: Partial<{ title: string; description: string; status: DailyTaskStatus }>
+  ) => api.patch<DailyTask>(`/daily-tasks/${id}`, data),
+  delete: (id: string) => api.delete(`/daily-tasks/${id}`),
+  getAll: (date: string, employeeId?: string) => {
+    const params = new URLSearchParams({ date });
+    if (employeeId) params.set("employeeId", employeeId);
+    return api.get<DailyTask[]>(`/daily-tasks?${params.toString()}`);
+  },
+  getSummary: (date: string) =>
+    api.get<DailyTaskSummary>(`/daily-tasks/summary?date=${encodeURIComponent(date)}`),
 };

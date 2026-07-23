@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import {
   CalendarDays,
+  CheckSquare,
   ClipboardList,
   FileText,
   LayoutDashboard,
@@ -44,6 +45,11 @@ const adminNav: NavItem[] = [
     label: "Leave Requests",
     href: "/admin/leaves",
     icon: <ClipboardList className="h-5 w-5" />,
+  },
+  {
+    label: "Daily Tasks",
+    href: "/admin/tasks",
+    icon: <CheckSquare className="h-5 w-5" />,
   },
   {
     label: "Leave Assign",
