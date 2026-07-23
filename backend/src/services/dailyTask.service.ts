@@ -50,15 +50,19 @@ export async function getEmployeeTasksForDate(employeeId: string, taskDate: Date
   });
 }
 
-export async function getAllTasksForDate(taskDate: Date, employeeId?: string) {
+export async function getAllTasksForDate(
+  taskDate: Date,
+  filters?: { employeeId?: string; jobRole?: string }
+) {
   const { start, end } = getTaskDateRange(taskDate);
   return prisma.dailyTask.findMany({
     where: {
       taskDate: { gte: start, lt: end },
-      ...(employeeId ? { employeeId } : {}),
+      ...(filters?.employeeId ? { employeeId: filters.employeeId } : {}),
       employee: {
         isArchived: false,
         user: { role: "EMPLOYEE" },
+        ...(filters?.jobRole ? { jobRole: filters.jobRole } : {}),
       },
     },
     orderBy: [{ employee: { firstName: "asc" } }, { status: "asc" }, { createdAt: "asc" }],

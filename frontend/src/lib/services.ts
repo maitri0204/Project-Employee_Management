@@ -96,11 +96,14 @@ export const dailyTaskApi = {
     data: Partial<{ title: string; description: string; status: DailyTaskStatus }>
   ) => api.patch<DailyTask>(`/daily-tasks/${id}`, data),
   delete: (id: string) => api.delete(`/daily-tasks/${id}`),
-  getAll: (date: string, employeeId?: string) => {
+  getAll: (date: string, jobRole?: string) => {
     const params = new URLSearchParams({ date });
-    if (employeeId) params.set("employeeId", employeeId);
+    if (jobRole) params.set("jobRole", jobRole);
     return api.get<DailyTask[]>(`/daily-tasks?${params.toString()}`);
   },
-  getSummary: (date: string) =>
-    api.get<DailyTaskSummary>(`/daily-tasks/summary?date=${encodeURIComponent(date)}`),
+  getSummary: (date: string, jobRole?: string) => {
+    const params = new URLSearchParams({ date });
+    if (jobRole) params.set("jobRole", jobRole);
+    return api.get<DailyTaskSummary>(`/daily-tasks/summary?${params.toString()}`);
+  },
 };

@@ -11,36 +11,29 @@ import {
   TasksErrorBanner,
   TasksLoadingState,
 } from "@/components/daily-tasks/DailyTaskComponents";
-import { dailyTaskApi, employeeApi } from "@/lib/services";
+import { dailyTaskApi } from "@/lib/services";
 import { toDateInputValue } from "@/lib/dateUtils";
-import { DailyTask, DailyTaskSummary, Employee } from "@/types";
+import { DailyTask, DailyTaskSummary } from "@/types";
 
-function formatName(emp: Pick<Employee, "firstName" | "middleName" | "lastName">) {
+function formatName(emp: { firstName: string; middleName?: string | null; lastName: string }) {
   return [emp.firstName, emp.middleName, emp.lastName].filter(Boolean).join(" ");
 }
 
 export default function AdminTasksPage() {
   const [selectedDate, setSelectedDate] = useState(toDateInputValue());
-  const [employeeFilter, setEmployeeFilter] = useState("");
-  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [roleFilter, setRoleFilter] = useState("");
   const [tasks, setTasks] = useState<DailyTask[]>([]);
   const [summary, setSummary] = useState<DailyTaskSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    employeeApi.getAll(false).then((res) => {
-      if (res.data) setEmployees(res.data);
-    });
-  }, []);
 
   const fetchTasks = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
       const [tasksRes, summaryRes] = await Promise.all([
-        dailyTaskApi.getAll(selectedDate, employeeFilter || undefined),
-        dailyTaskApi.getSummary(selectedDate),
+        dailyTaskApi.getAll(selectedDate, roleFilter || undefined),
+        dailyTaskApi.getSummary(selectedDate, roleFilter || undefined),
       ]);
       setTasks(tasksRes.data ?? []);
       setSummary(summaryRes.data ?? null);
@@ -49,7 +42,7 @@ export default function AdminTasksPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedDate, employeeFilter]);
+  }, [selectedDate, roleFilter]);
 
   useEffect(() => {
     void fetchTasks();
@@ -81,11 +74,9 @@ export default function AdminTasksPage() {
 
         <AdminFiltersBar
           selectedDate={selectedDate}
-          employeeFilter={employeeFilter}
-          employees={employees}
+          roleFilter={roleFilter}
           onDateChange={setSelectedDate}
-          onEmployeeChange={setEmployeeFilter}
-          formatName={formatName}
+          onRoleChange={setRoleFilter}
         />
 
         {summary && <AdminSummaryGrid summary={summary} />}
@@ -98,8 +89,8 @@ export default function AdminTasksPage() {
           <TasksEmptyState
             title="No tasks for this day"
             hint={
-              employeeFilter
-                ? "This employee hasn't logged any tasks for the selected date."
+              roleFilter
+                ? `No employees with the "${roleFilter}" role have logged tasks for this date.`
                 : "No employees have submitted tasks for this date yet. Check back later or pick another day."
             }
           />

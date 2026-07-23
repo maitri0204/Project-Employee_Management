@@ -185,9 +185,10 @@ export const getAllDailyTasks = async (req: Request, res: Response) => {
   try {
     const dateParam = typeof req.query.date === "string" ? req.query.date : undefined;
     const employeeId = typeof req.query.employeeId === "string" ? req.query.employeeId : undefined;
+    const jobRole = typeof req.query.jobRole === "string" ? req.query.jobRole : undefined;
     const taskDate = parseTaskDateInput(dateParam);
 
-    const tasks = await getAllTasksForDate(taskDate, employeeId);
+    const tasks = await getAllTasksForDate(taskDate, { employeeId, jobRole });
     return sendSuccess(
       res,
       "Tasks fetched successfully.",
@@ -202,8 +203,9 @@ export const getAllDailyTasks = async (req: Request, res: Response) => {
 export const getDailyTaskSummary = async (req: Request, res: Response) => {
   try {
     const dateParam = typeof req.query.date === "string" ? req.query.date : undefined;
+    const jobRole = typeof req.query.jobRole === "string" ? req.query.jobRole : undefined;
     const taskDate = parseTaskDateInput(dateParam);
-    const tasks = await getAllTasksForDate(taskDate);
+    const tasks = await getAllTasksForDate(taskDate, { jobRole });
 
     const byEmployee = new Map<
       string,

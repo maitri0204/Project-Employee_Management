@@ -16,6 +16,7 @@ import {
   Users,
 } from "lucide-react";
 import { formatDisplayDate, toDateInputValue } from "@/lib/dateUtils";
+import { JOB_ROLES } from "@/constants/employee";
 import { DailyTask, DailyTaskSummary } from "@/types";
 import { Badge, Button, Input, Select, Textarea } from "@/components/ui";
 
@@ -524,18 +525,14 @@ export function AdminEmployeeTaskGroup({
 
 export function AdminFiltersBar({
   selectedDate,
-  employeeFilter,
-  employees,
+  roleFilter,
   onDateChange,
-  onEmployeeChange,
-  formatName,
+  onRoleChange,
 }: {
   selectedDate: string;
-  employeeFilter: string;
-  employees: { id: string; firstName: string; middleName?: string | null; lastName: string }[];
+  roleFilter: string;
   onDateChange: (date: string) => void;
-  onEmployeeChange: (id: string) => void;
-  formatName: (emp: { firstName: string; middleName?: string | null; lastName: string }) => string;
+  onRoleChange: (role: string) => void;
 }) {
   return (
     <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
@@ -548,11 +545,11 @@ export function AdminFiltersBar({
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Input label="Date" type="date" value={selectedDate} onChange={(e) => onDateChange(e.target.value)} />
-        <Select label="Employee" value={employeeFilter} onChange={(e) => onEmployeeChange(e.target.value)}>
-          <option value="">All employees</option>
-          {employees.map((emp) => (
-            <option key={emp.id} value={emp.id}>
-              {formatName(emp)}
+        <Select label="Role" value={roleFilter} onChange={(e) => onRoleChange(e.target.value)}>
+          <option value="">All roles</option>
+          {JOB_ROLES.map((role) => (
+            <option key={role} value={role}>
+              {role}
             </option>
           ))}
         </Select>
