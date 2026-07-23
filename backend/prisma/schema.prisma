@@ -104,6 +104,7 @@ model LeaveRequest {
   sandwichDays Int      @default(0)
   status       String   @default("PENDING")
   adminNote    String?
+  medicalCertificateUrl String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }

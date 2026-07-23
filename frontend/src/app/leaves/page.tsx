@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarDays, ClipboardList, Plane } from "lucide-react";
+import { CalendarDays, ClipboardList, FileText, Plane } from "lucide-react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import LeaveCalendar from "@/components/LeaveCalendar";
 import { calendarApi, leaveApi } from "@/lib/services";
+import { getMaxSlEndDateString, isSlLeaveRangeInvalid } from "@/lib/dateUtils";
 import {
   emptyLeaveBreakdown,
   formatLeaveBreakdownLabel,
@@ -61,6 +62,7 @@ export default function LeavesPage() {
   const [leaveBreakdown, setLeaveBreakdown] = useState<LeaveBreakdown>(emptyLeaveBreakdown());
   const [dayPreview, setDayPreview] = useState<LeaveDayBreakdown | null>(null);
   const [sandwichConfirm, setSandwichConfirm] = useState<LeaveDayBreakdown | null>(null);
+  const [medicalCertificate, setMedicalCertificate] = useState<File | null>(null);
   const [error, setError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -79,7 +81,12 @@ export default function LeavesPage() {
   }, [leaveBreakdown, availableByType, allocatedDays]);
 
   const hasBalanceError = balanceErrors.length > 0;
-  const canSubmit = allocationComplete && !hasBalanceError && !isSubmitting;
+  const hasSlAllocation = leaveBreakdown.SL > 0;
+  const slDateInvalid =
+    hasSlAllocation && isSlLeaveRangeInvalid(formData.startDate, formData.endDate);
+  const medicalCertMissing = hasSlAllocation && !medicalCertificate;
+  const canSubmit =
+    allocationComplete && !hasBalanceError && !isSubmitting && !slDateInvalid && !medicalCertMissing;
 
   const loadOverview = useCallback(async (year: number, month: number, initial = false) => {
     if (initial) setPageLoading(true);
@@ -165,6 +172,7 @@ export default function LeavesPage() {
     setFormData(INITIAL_FORM);
     setLeaveBreakdown(emptyLeaveBreakdown());
     setDayPreview(null);
+    setMedicalCertificate(null);
   };
 
   const submitLeave = async () => {
@@ -176,6 +184,7 @@ export default function LeavesPage() {
         endDate: formData.endDate,
         reason: formData.reason,
         leaveBreakdown,
+        ...(medicalCertificate ? { medicalCertificate } : {}),
       });
       setShowForm(false);
       setSandwichConfirm(null);
@@ -211,6 +220,18 @@ export default function LeavesPage() {
 
     if (hasBalanceError) {
       setError(balanceErrors[0]);
+      return;
+    }
+
+    if (hasSlAllocation && slDateInvalid) {
+      setError(
+        "Sick leave (SL) can only be applied for dates before today. Use an end date of yesterday or earlier."
+      );
+      return;
+    }
+
+    if (medicalCertMissing) {
+      setError("Please upload a medical certificate for sick leave (SL).");
       return;
     }
 
@@ -329,9 +350,20 @@ export default function LeavesPage() {
                 label="End Date"
                 type="date"
                 value={formData.endDate}
+                max={hasSlAllocation ? getMaxSlEndDateString() : undefined}
                 onChange={(e) => setFormData({ ...formData, endDate: e.target.value })}
                 required
               />
+
+              {slDateInvalid && (
+                <div className="md:col-span-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  <strong>Sick leave rule:</strong> SL can only be used for past dates. Your leave must end on{" "}
+                  <strong>
+                    {new Date(`${getMaxSlEndDateString()}T12:00:00`).toLocaleDateString("en-IN")}
+                  </strong>{" "}
+                  or earlier (not today or future dates).
+                </div>
+              )}
 
               {dayPreview && dayPreview.totalDays > 0 && (
                 <>
@@ -364,6 +396,11 @@ export default function LeavesPage() {
                     </div>
                     <p className="mb-4 text-xs text-slate-600">
                       Split the {requiredDays} day(s) across one or more types - e.g. 1 CL + 1 SL.
+                      {slDateInvalid && (
+                        <span className="mt-1 block font-medium text-amber-700">
+                          SL is for sick days already taken — only past dates are allowed.
+                        </span>
+                      )}
                     </p>
                     <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
                       {LEAVE_TYPES.map((type) => {
@@ -415,6 +452,12 @@ export default function LeavesPage() {
                         ))}
                       </div>
                     )}
+                    {slDateInvalid && (
+                      <div className="mt-4 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                        Sick leave cannot include today or future dates. Change your end date or remove SL
+                        from the allocation.
+                      </div>
+                    )}
                     {balance?.clHalfYear && leaveBreakdown.CL > 0 && (
                       <p className="mt-3 text-xs text-slate-600">
                         CL usable this half (
@@ -429,6 +472,42 @@ export default function LeavesPage() {
                     )}
                   </div>
                 </>
+              )}
+
+              {hasSlAllocation && (
+                <div className="md:col-span-2 overflow-hidden rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50/50">
+                  <div className="flex items-center gap-2 border-b border-amber-200/80 bg-amber-100/60 px-4 py-3">
+                    <FileText className="h-5 w-5 text-amber-700" />
+                    <div>
+                      <p className="text-sm font-semibold text-amber-950">Medical certificate required</p>
+                      <p className="text-xs text-amber-800">
+                        Upload a doctor&apos;s note or medical certificate for sick leave (JPEG, PNG, or PDF).
+                      </p>
+                    </div>
+                  </div>
+                  <div className="p-4">
+                    <input
+                      type="file"
+                      accept=".jpg,.jpeg,.png,.pdf"
+                      className="block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-amber-600 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-amber-700"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0] ?? null;
+                        setMedicalCertificate(file);
+                        if (error) setError("");
+                      }}
+                    />
+                    {medicalCertificate && (
+                      <p className="mt-2 text-xs font-medium text-emerald-700">
+                        Selected: {medicalCertificate.name}
+                      </p>
+                    )}
+                    {medicalCertMissing && (
+                      <p className="mt-2 text-xs font-semibold text-red-600">
+                        Medical certificate is required when applying SL.
+                      </p>
+                    )}
+                  </div>
+                </div>
               )}
 
               <div className="md:col-span-2">
@@ -507,6 +586,12 @@ export default function LeavesPage() {
                           {req.sandwichDays ? ` · +${req.sandwichDays} sandwich` : ""}
                         </p>
                         <p className="mt-2 line-clamp-2 text-xs text-slate-600">{req.reason}</p>
+                        {req.medicalCertificateUrl && (
+                          <p className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-amber-700">
+                            <FileText className="h-3.5 w-3.5" />
+                            Medical certificate attached
+                          </p>
+                        )}
                       </li>
                     ))}
                   </ul>

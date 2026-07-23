@@ -7,13 +7,16 @@ import {
   CheckCircle2,
   ClipboardList,
   Clock3,
+  FileText,
   Inbox,
   XCircle,
 } from "lucide-react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import LeaveNotificationBadge from "@/components/LeaveNotificationBadge";
 import { useLeaveNotifications } from "@/context/LeaveNotificationContext";
+import { UPLOADS_BASE } from "@/lib/api";
 import { leaveApi } from "@/lib/services";
+import { breakdownFromRequest } from "@/lib/leaveBreakdown";
 import { formatUsedTotal, getLeaveTotals } from "@/lib/leaveFormat";
 import { EmployeeLeaveUsageRow, LeaveRequest, LeaveStatus } from "@/types";
 import { Badge, Button, Card } from "@/components/ui";
@@ -182,6 +185,18 @@ function RequestCard({
           <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-500">Reason</p>
           <p className="mt-1 text-sm leading-relaxed text-slate-800">&ldquo;{req.reason}&rdquo;</p>
         </div>
+
+        {req.medicalCertificateUrl && breakdownFromRequest(req).SL > 0 && (
+          <a
+            href={`${UPLOADS_BASE}${req.medicalCertificateUrl}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-4 inline-flex items-center gap-2 rounded-xl border border-amber-200 bg-amber-50 px-4 py-2.5 text-sm font-semibold text-amber-900 transition hover:bg-amber-100"
+          >
+            <FileText className="h-4 w-4" />
+            View medical certificate
+          </a>
+        )}
 
         {isPending && (
           <div className="mt-4 flex flex-wrap gap-2 border-t border-amber-100 pt-4">

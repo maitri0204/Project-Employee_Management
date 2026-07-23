@@ -53,7 +53,18 @@ export const leavePolicyApi = {
 };
 
 export const leaveApi = {
-  apply: (data: ApplyLeaveData) => api.post<LeaveRequest>("/leaves/apply", data),
+  apply: (data: ApplyLeaveData) => {
+    if (data.medicalCertificate) {
+      const formData = new FormData();
+      formData.append("startDate", data.startDate);
+      formData.append("endDate", data.endDate);
+      formData.append("reason", data.reason);
+      formData.append("leaveBreakdown", JSON.stringify(data.leaveBreakdown));
+      formData.append("medicalCertificate", data.medicalCertificate);
+      return api.post<LeaveRequest>("/leaves/apply", formData);
+    }
+    return api.post<LeaveRequest>("/leaves/apply", data);
+  },
   previewDays: (startDate: string, endDate: string) =>
     api.get<LeaveDayBreakdown>(
       `/leaves/preview-days?startDate=${encodeURIComponent(startDate)}&endDate=${encodeURIComponent(endDate)}`

@@ -14,3 +14,23 @@ export function formatDisplayDate(dateStr: string) {
     year: "numeric",
   });
 }
+
+/** Yesterday — latest end date allowed when applying sick leave (SL). */
+export function getMaxSlEndDateString() {
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  return toDateInputValue(yesterday);
+}
+
+export function isSlLeaveEndDateValid(endDate: string) {
+  if (!endDate?.trim()) return true;
+  return endDate <= getMaxSlEndDateString();
+}
+
+export function isSlLeaveRangeInvalid(startDate: string, endDate: string) {
+  if (!endDate?.trim()) return false;
+  const maxEnd = getMaxSlEndDateString();
+  if (endDate > maxEnd) return true;
+  if (startDate?.trim() && startDate > maxEnd) return true;
+  return false;
+}

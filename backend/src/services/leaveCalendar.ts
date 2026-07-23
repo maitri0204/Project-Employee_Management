@@ -17,6 +17,18 @@ export function dateKey(date: Date): string {
   return `${y}-${m}-${d}`;
 }
 
+/** Latest calendar date allowed when applying sick leave (yesterday). */
+export function getLatestSlLeaveDate(): Date {
+  const today = parseDateOnly(new Date());
+  const yesterday = new Date(today);
+  yesterday.setDate(yesterday.getDate() - 1);
+  return yesterday;
+}
+
+export function isSlLeaveDateRangeValid(end: Date): boolean {
+  return end < parseDateOnly(new Date());
+}
+
 export function eachDayInRange(start: Date, end: Date): Date[] {
   const days: Date[] = [];
   const cursor = parseDateOnly(start);

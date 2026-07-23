@@ -3,6 +3,7 @@ import { LeaveType } from "../types";
 import { getLeavePolicy } from "./leavePolicy";
 import { getPendingLeaveDays } from "./leavePending";
 import { validateClDayAllocation, getClHalfYearInfo } from "./leaveClHalfYear";
+import { isSlLeaveDateRangeValid } from "./leaveCalendar";
 import {
   LeaveBreakdown,
   LEAVE_TYPES,
@@ -90,6 +91,14 @@ export async function validateLeaveBreakdownApplication(params: {
 
   if (breakdown.LWP > 0 && breakdown.LWP > totalDays) {
     return { ok: false, message: "Invalid LWP allocation." };
+  }
+
+  if (breakdown.SL > 0 && !isSlLeaveDateRangeValid(end)) {
+    return {
+      ok: false,
+      message:
+        "Sick leave (SL) can only be applied for dates before today. Select an end date of yesterday or earlier.",
+    };
   }
 
   return { ok: true };

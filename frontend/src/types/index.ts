@@ -221,6 +221,7 @@ export interface LeaveRequest {
   sandwichDays?: number;
   status: LeaveStatus;
   adminNote?: string | null;
+  medicalCertificateUrl?: string | null;
   createdAt: string;
   updatedAt: string;
   employee?: Pick<Employee, "id" | "firstName" | "middleName" | "lastName"> & {
@@ -253,6 +254,7 @@ export interface ApplyLeaveData {
   endDate: string;
   reason: string;
   leaveBreakdown: LeaveBreakdown;
+  medicalCertificate?: File;
 }
 
 export type DailyTaskStatus = "PLANNED" | "COMPLETED";

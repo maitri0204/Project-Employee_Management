@@ -12,6 +12,7 @@ import {
   streamLeaveNotifications,
 } from "../controllers/leave.controller";
 import { authenticate, authenticateFromQueryOrHeader, authorize } from "../middleware/auth";
+import { handleLeaveUpload } from "../middleware/upload";
 
 const router = Router();
 
@@ -24,7 +25,7 @@ router.get(
 
 router.use(authenticate);
 
-router.post("/apply", applyLeave);
+router.post("/apply", handleLeaveUpload, applyLeave);
 router.get("/preview-days", previewLeaveDays);
 router.get("/my-overview", getMyLeaveOverview);
 router.get("/my", getMyLeaveRequests);

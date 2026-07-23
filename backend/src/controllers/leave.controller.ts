@@ -22,6 +22,7 @@ import {
   deductApprovedLeaveBreakdown,
 } from "../services/leaveApplication";
 import { leaveNotificationHub } from "../services/leaveNotificationHub";
+import { getFileUrl, parseFile } from "../middleware/upload";
 
 export const previewLeaveDays = async (req: Request, res: Response) => {
   try {
@@ -49,7 +50,16 @@ export const previewLeaveDays = async (req: Request, res: Response) => {
 export const applyLeave = async (req: Request, res: Response) => {
   try {
     const { userId } = (req as AuthRequest).user!;
-    const { leaveBreakdown: rawBreakdown, startDate, endDate, reason } = req.body;
+    const { startDate, endDate, reason } = req.body;
+
+    let rawBreakdown = req.body.leaveBreakdown;
+    if (typeof rawBreakdown === "string") {
+      try {
+        rawBreakdown = JSON.parse(rawBreakdown);
+      } catch {
+        return sendError(res, "Invalid leave breakdown format.");
+      }
+    }
 
     if (!startDate || !endDate || !reason) {
       return sendError(res, "Please provide all required fields.");
@@ -109,6 +119,13 @@ export const applyLeave = async (req: Request, res: Response) => {
       return sendError(res, validation.message);
     }
 
+    const files = req.files as { [fieldname: string]: Express.Multer.File[] } | undefined;
+    const medicalFile = parseFile(files?.medicalCertificate);
+
+    if (breakdown.SL > 0 && !medicalFile) {
+      return sendError(res, "A medical certificate is required when applying sick leave (SL).");
+    }
+
     const leaveTypeLabel = resolveLeaveTypeLabel(breakdown);
 
     const leaveRequest = await prisma.leaveRequest.create({
@@ -121,6 +138,7 @@ export const applyLeave = async (req: Request, res: Response) => {
         reason,
         days: totalDays,
         sandwichDays,
+        ...(medicalFile ? { medicalCertificateUrl: getFileUrl(medicalFile.filename) } : {}),
       },
     });
 
