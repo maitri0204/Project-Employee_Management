@@ -7,6 +7,7 @@ import { ClipboardList, UserPlus, Users } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { useLeaveNotifications } from "@/context/LeaveNotificationContext";
 import ProtectedRoute from "@/components/ProtectedRoute";
+import { isAdminRole } from "@/lib/roles";
 import { employeeApi, leaveApi } from "@/lib/services";
 import { GENDER_OPTIONS } from "@/constants/employee";
 import { formatUsedTotal, getLeaveTotals } from "@/lib/leaveFormat";
@@ -255,7 +256,7 @@ export default function DashboardPage() {
 
   return (
     <ProtectedRoute>
-      {user?.role === "ADMIN" ? <AdminDashboard /> : <EmployeeDashboard />}
+      {isAdminRole(user?.role) ? <AdminDashboard /> : <EmployeeDashboard />}
     </ProtectedRoute>
   );
 }

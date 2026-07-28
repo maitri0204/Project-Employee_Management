@@ -1,10 +1,10 @@
 import { Router } from "express";
 import { getPolicy, updatePolicy } from "../controllers/leavePolicy.controller";
-import { authenticate, authorize } from "../middleware/auth";
+import { authenticate, authorizeAdmin } from "../middleware/auth";
 
 const router = Router();
 
-router.use(authenticate, authorize("ADMIN"));
+router.use(authenticate, authorizeAdmin);
 
 router.get("/", getPolicy);
 router.put("/", updatePolicy);

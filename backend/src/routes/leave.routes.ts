@@ -11,7 +11,11 @@ import {
   getPendingLeaveCount,
   streamLeaveNotifications,
 } from "../controllers/leave.controller";
-import { authenticate, authenticateFromQueryOrHeader, authorize } from "../middleware/auth";
+import {
+  authenticate,
+  authenticateFromQueryOrHeader,
+  authorizeAdmin,
+} from "../middleware/auth";
 import { handleLeaveUpload } from "../middleware/upload";
 
 const router = Router();
@@ -19,7 +23,7 @@ const router = Router();
 router.get(
   "/notifications/stream",
   authenticateFromQueryOrHeader,
-  authorize("ADMIN"),
+  authorizeAdmin,
   streamLeaveNotifications
 );
 
@@ -30,9 +34,9 @@ router.get("/preview-days", previewLeaveDays);
 router.get("/my-overview", getMyLeaveOverview);
 router.get("/my", getMyLeaveRequests);
 router.get("/balance", getMyLeaveBalance);
-router.get("/notifications/pending-count", authorize("ADMIN"), getPendingLeaveCount);
-router.get("/usage", authorize("ADMIN"), getLeaveUsage);
-router.get("/", authorize("ADMIN"), getAllLeaveRequests);
-router.patch("/:id/status", authorize("ADMIN"), updateLeaveStatus);
+router.get("/notifications/pending-count", authorizeAdmin, getPendingLeaveCount);
+router.get("/usage", authorizeAdmin, getLeaveUsage);
+router.get("/", authorizeAdmin, getAllLeaveRequests);
+router.patch("/:id/status", authorizeAdmin, updateLeaveStatus);
 
 export default router;

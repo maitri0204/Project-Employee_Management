@@ -1,6 +1,6 @@
 /** Date helpers, holidays (Sundays + 2nd Saturday), joining & financial year rules. */
 
-import { getCompanyHolidayName } from "../data/companyHolidays";
+import { getCompanyHolidayName } from "../services/holiday.service";
 
 export function parseDateOnly(value: string | Date): Date {
   if (value instanceof Date) {

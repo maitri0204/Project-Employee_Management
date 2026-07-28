@@ -1,4 +1,4 @@
-import { api } from "@/lib/api";
+import { api, fetchWithAuth } from "@/lib/api";
 import {
   AuthResponse,
   User,
@@ -16,6 +16,8 @@ import {
   DailyTask,
   DailyTaskSummary,
   DailyTaskStatus,
+  HolidayImportResult,
+  ManagedHoliday,
 } from "@/types";
 
 export const authApi = {
@@ -94,7 +96,42 @@ export const hrPolicyApi = {
 export const calendarApi = {
   getMonth: (year: number, month: number) =>
     api.get<CalendarMonthData>(`/calendar?year=${year}&month=${month}`),
-  getHolidays: () => api.get<{ date: string; name: string }[]>("/calendar/holidays"),
+  getHolidays: () => api.get<{ date: string; name: string }[]>("/holidays"),
+};
+
+export const holidayApi = {
+  getManaged: () => api.get<ManagedHoliday[]>("/holidays/manage"),
+  create: (date: string, description: string) =>
+    api.post<ManagedHoliday>("/holidays", { date, description }),
+  uploadExcel: (file: File) => {
+    const formData = new FormData();
+    formData.append("file", file);
+    return api.post<HolidayImportResult>("/holidays/upload", formData);
+  },
+  delete: (id: string) => api.delete(`/holidays/${id}`),
+  downloadSampleTemplate: async () => {
+    const response = await fetchWithAuth("/holidays/sample-template");
+    if (!response.ok) {
+      let message = "Failed to download sample file.";
+      try {
+        const data = (await response.json()) as { message?: string };
+        if (data.message) message = data.message;
+      } catch {
+        // ignore non-JSON error bodies
+      }
+      throw new Error(message);
+    }
+
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "holiday-import-sample.xlsx";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  },
 };
 
 export const dailyTaskApi = {

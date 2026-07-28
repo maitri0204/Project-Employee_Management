@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import prisma from "../config/database";
 import { AuthRequest } from "../types";
 import { sendError, sendSuccess } from "../utils/response";
+import { isAdminRole } from "../utils/roles";
 import {
   formatEmployeeName,
   getAllTasksForDate,
@@ -97,7 +98,7 @@ export const updateDailyTask = async (req: Request, res: Response) => {
       return sendError(res, "Task not found.", 404);
     }
 
-    if (role !== "ADMIN") {
+    if (!isAdminRole(role)) {
       const employee = await getEmployeeForUser(userId);
       if (!employee || employee.id !== task.employeeId) {
         return sendError(res, "You can only update your own tasks.", 403);
@@ -166,7 +167,7 @@ export const deleteDailyTask = async (req: Request, res: Response) => {
       return sendError(res, "Task not found.", 404);
     }
 
-    if (role !== "ADMIN") {
+    if (!isAdminRole(role)) {
       const employee = await getEmployeeForUser(userId);
       if (!employee || employee.id !== task.employeeId) {
         return sendError(res, "You can only delete your own tasks.", 403);

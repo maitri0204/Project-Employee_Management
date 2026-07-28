@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { AuthRequest } from "../types";
 import { getCalendarForMonth } from "../services/calendar.service";
 import { sendError, sendSuccess } from "../utils/response";
-import { COMPANY_HOLIDAYS } from "../data/companyHolidays";
+import { listHolidays } from "./holiday.controller";
 
 export const getMonthCalendar = async (req: Request, res: Response) => {
   try {
@@ -22,11 +22,4 @@ export const getMonthCalendar = async (req: Request, res: Response) => {
   }
 };
 
-export const listCompanyHolidays = async (_req: Request, res: Response) => {
-  try {
-    return sendSuccess(res, "Company holidays fetched successfully.", COMPANY_HOLIDAYS);
-  } catch (error) {
-    console.error("List holidays error:", error);
-    return sendError(res, "Failed to fetch holidays.", 500);
-  }
-};
+export const listCompanyHolidays = listHolidays;

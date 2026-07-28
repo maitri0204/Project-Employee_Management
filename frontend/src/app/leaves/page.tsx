@@ -398,7 +398,7 @@ export default function LeavesPage() {
                       Split the {requiredDays} day(s) across one or more types - e.g. 1 CL + 1 SL.
                       {slDateInvalid && (
                         <span className="mt-1 block font-medium text-amber-700">
-                          SL is for sick days already taken — only past dates are allowed.
+                          SL is for sick days already taken - only past dates are allowed.
                         </span>
                       )}
                     </p>

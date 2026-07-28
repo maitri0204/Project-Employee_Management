@@ -8,7 +8,8 @@ import {
   isSunday,
   parseDateOnly,
 } from "./leaveCalendar";
-import { getCompanyHolidayName, getCompanyHolidaysInRange } from "../data/companyHolidays";
+import { getCompanyHolidayName, getCompanyHolidaysInRange, ensureHolidayCache } from "./holiday.service";
+import { isAdminRole } from "../utils/roles";
 import { formatLeaveBreakdownLabel, getRequestBreakdown } from "./leaveBreakdown";
 
 export type CalendarLeaveEntry = {
@@ -52,10 +53,11 @@ export async function getCalendarForMonth(
   month: number,
   user: NonNullable<AuthRequest["user"]>
 ): Promise<{ year: number; month: number; days: CalendarDayInfo[]; holidays: { date: string; name: string }[] }> {
+  await ensureHolidayCache();
   const { start, end, startKey, endKey } = monthRange(year, month);
 
   const leaveWhere =
-    user!.role === "ADMIN"
+    isAdminRole(user!.role)
       ? {
           status: { in: ["APPROVED", "PENDING"] as string[] },
           startDate: { lte: end },

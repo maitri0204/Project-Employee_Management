@@ -9,6 +9,7 @@ import leavePolicyRoutes from "./routes/leavePolicy.routes";
 import hrPolicyRoutes from "./routes/hrPolicy.routes";
 import calendarRoutes from "./routes/calendar.routes";
 import dailyTaskRoutes from "./routes/dailyTask.routes";
+import holidayRoutes from "./routes/holiday.routes";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler";
 
 const app = express();
@@ -34,6 +35,7 @@ app.use("/api/leave-policy", leavePolicyRoutes);
 app.use("/api/hr-policy", hrPolicyRoutes);
 app.use("/api/calendar", calendarRoutes);
 app.use("/api/daily-tasks", dailyTaskRoutes);
+app.use("/api/holidays", holidayRoutes);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

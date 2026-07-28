@@ -7,6 +7,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { useAuth } from "@/context/AuthContext";
 import { fetchWithAuth } from "@/lib/api";
 import { hrPolicyApi } from "@/lib/services";
+import { isAdminRole } from "@/lib/roles";
 import { Button, Card } from "@/components/ui";
 
 type WordPreview = {
@@ -17,7 +18,7 @@ type WordPreview = {
 export default function HrPolicyViewerPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
-  const isAdmin = user?.role === "ADMIN";
+  const isAdmin = isAdminRole(user?.role);
   const [title, setTitle] = useState("HR Policy");
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [wordPreview, setWordPreview] = useState<WordPreview | null>(null);

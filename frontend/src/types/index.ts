@@ -95,6 +95,21 @@ export interface HrPolicyDocument {
   createdAt: string;
 }
 
+export interface ManagedHoliday {
+  id: string;
+  dateKey: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HolidayImportResult {
+  added: number;
+  updated: number;
+  skipped: number;
+  errors: { row: number; message: string }[];
+}
+
 export type DocumentsStatus =
   | "NOT_SUBMITTED"
   | "PENDING_REVIEW"

@@ -6,6 +6,7 @@ import prisma from "../config/database";
 import { AuthRequest } from "../types";
 import { getHrPolicyFilePath } from "../middleware/hrPolicyUpload";
 import { sendError, sendSuccess } from "../utils/response";
+import { isAdminRole } from "../utils/roles";
 
 const DOCX_MIME =
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -118,7 +119,7 @@ export const viewHrPolicyDocument = async (req: Request, res: Response) => {
 export const downloadHrPolicyDocument = async (req: Request, res: Response) => {
   try {
     const { role } = (req as AuthRequest).user!;
-    if (role !== "ADMIN") {
+    if (!isAdminRole(role)) {
       return sendError(res, "Only admins can download HR policy documents.", 403);
     }
 

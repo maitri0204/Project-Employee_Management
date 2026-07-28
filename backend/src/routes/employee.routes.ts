@@ -11,7 +11,7 @@ import {
   archiveEmployee,
   deleteEmployee,
 } from "../controllers/employee.controller";
-import { authenticate, authorize } from "../middleware/auth";
+import { authenticate, authorize, authorizeAdmin } from "../middleware/auth";
 import { handleEmployeeUpload } from "../middleware/upload";
 
 const router = Router();
@@ -19,14 +19,14 @@ const router = Router();
 router.use(authenticate);
 
 router.patch("/me", authorize("EMPLOYEE"), handleEmployeeUpload, updateMyProfile);
-router.post("/", authorize("ADMIN"), createEmployee);
-router.get("/", authorize("ADMIN"), getAllEmployees);
-router.get("/:id", authorize("ADMIN"), getEmployeeById);
-router.put("/:id", authorize("ADMIN"), handleEmployeeUpload, updateEmployee);
-router.patch("/:id/documents/:documentKey/approve", authorize("ADMIN"), approveDocument);
-router.patch("/:id/documents/:documentKey/reject", authorize("ADMIN"), rejectDocument);
-router.patch("/:id/lock", authorize("ADMIN"), toggleProfileLock);
-router.patch("/:id/archive", authorize("ADMIN"), archiveEmployee);
-router.delete("/:id", authorize("ADMIN"), deleteEmployee);
+router.post("/", authorizeAdmin, createEmployee);
+router.get("/", authorizeAdmin, getAllEmployees);
+router.get("/:id", authorizeAdmin, getEmployeeById);
+router.put("/:id", authorizeAdmin, handleEmployeeUpload, updateEmployee);
+router.patch("/:id/documents/:documentKey/approve", authorizeAdmin, approveDocument);
+router.patch("/:id/documents/:documentKey/reject", authorizeAdmin, rejectDocument);
+router.patch("/:id/lock", authorizeAdmin, toggleProfileLock);
+router.patch("/:id/archive", authorizeAdmin, archiveEmployee);
+router.delete("/:id", authorizeAdmin, deleteEmployee);
 
 export default router;

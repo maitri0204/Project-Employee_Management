@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/AuthContext";
+import { isAdminRole } from "@/lib/roles";
 import AdminShell from "@/components/layout/AdminShell";
 import EmployeeShell from "@/components/layout/EmployeeShell";
 
@@ -19,8 +20,10 @@ export default function ProtectedRoute({
   useEffect(() => {
     if (!isLoading && !user) {
       router.push("/login");
+      return;
     }
-    if (!isLoading && user && adminOnly && user.role !== "ADMIN") {
+
+    if (!isLoading && user && adminOnly && !isAdminRole(user.role)) {
       router.push("/dashboard");
     }
   }, [user, isLoading, adminOnly, router]);
@@ -39,11 +42,10 @@ export default function ProtectedRoute({
     );
   }
 
-  if (!user || (adminOnly && user.role !== "ADMIN")) {
-    return null;
-  }
+  if (!user) return null;
+  if (adminOnly && !isAdminRole(user.role)) return null;
 
-  const shell = user.role === "ADMIN" ? (
+  const shell = isAdminRole(user.role) ? (
     <AdminShell>{children}</AdminShell>
   ) : (
     <EmployeeShell>{children}</EmployeeShell>

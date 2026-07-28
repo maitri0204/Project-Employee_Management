@@ -8,6 +8,7 @@ import {
   ReactNode,
 } from "react";
 import { useAuth } from "@/context/AuthContext";
+import { isAdminRole } from "@/lib/roles";
 
 type LeaveNotificationContextType = {
   pendingCount: number;
@@ -28,7 +29,7 @@ export function LeaveNotificationProvider({ children }: { children: ReactNode })
   const [revision, setRevision] = useState(0);
 
   useEffect(() => {
-    if (isLoading || user?.role !== "ADMIN" || !token) {
+    if (isLoading || !isAdminRole(user?.role) || !token) {
       setPendingCount(0);
       return;
     }

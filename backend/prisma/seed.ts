@@ -3,6 +3,11 @@ import { PrismaClient } from "@prisma/client";
 const prisma = new PrismaClient();
 
 async function main() {
+  await prisma.user.updateMany({
+    where: { role: "SUPERADMIN" },
+    data: { role: "ADMIN" },
+  });
+
   await prisma.user.upsert({
     where: { email: "maitripatel2608@gmail.com" },
     update: { role: "ADMIN" },

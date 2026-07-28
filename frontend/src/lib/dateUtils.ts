@@ -15,7 +15,7 @@ export function formatDisplayDate(dateStr: string) {
   });
 }
 
-/** Yesterday — latest end date allowed when applying sick leave (SL). */
+/** Yesterday - latest end date allowed when applying sick leave (SL). */
 export function getMaxSlEndDateString() {
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);

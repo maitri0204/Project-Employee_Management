@@ -152,7 +152,7 @@ export default function TasksPage() {
               tone="completed"
               icon={CheckCircle2}
               emptyTitle="No completions yet"
-              emptyHint="Tick off tasks as you finish them — they'll land here."
+              emptyHint="Tick off tasks as you finish them - they'll land here."
             >
               {completed.map((task) => (
                 <TaskCard

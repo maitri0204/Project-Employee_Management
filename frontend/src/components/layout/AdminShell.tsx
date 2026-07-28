@@ -10,6 +10,7 @@ import {
   FileText,
   LayoutDashboard,
   LogOut,
+  PartyPopper,
   UserPlus,
   Users,
 } from "lucide-react";
@@ -65,6 +66,11 @@ const adminNav: NavItem[] = [
     label: "HR Policy",
     href: "/admin/hr-policy",
     icon: <FileText className="h-5 w-5" />,
+  },
+  {
+    label: "Holidays",
+    href: "/admin/holidays",
+    icon: <PartyPopper className="h-5 w-5" />,
   },
 ];
 

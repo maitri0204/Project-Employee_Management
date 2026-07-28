@@ -49,3 +49,5 @@ export const authorize = (...roles: Role[]) => {
     next();
   };
 };
+
+export const authorizeAdmin = authorize("ADMIN");
