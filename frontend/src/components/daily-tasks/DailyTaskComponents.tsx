@@ -298,7 +298,7 @@ export function TaskCard({
   task: DailyTask;
   busy: boolean;
   onToggle: (task: DailyTask) => void;
-  onDelete: (task: DailyTask) => void;
+  onDelete?: (task: DailyTask) => void;
 }) {
   const completed = task.status === "COMPLETED";
 
@@ -362,15 +362,17 @@ export function TaskCard({
           )}
         </div>
 
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => onDelete(task)}
-          className="shrink-0 rounded-xl p-2 text-slate-300 opacity-0 transition group-hover:opacity-100 hover:bg-red-50 hover:text-red-600"
-          title="Delete task"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
+        {onDelete && (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => onDelete(task)}
+            className="shrink-0 rounded-xl p-2 text-slate-300 opacity-0 transition group-hover:opacity-100 hover:bg-red-50 hover:text-red-600"
+            title="Delete task"
+          >
+            <Trash2 className="h-4 w-4" />
+          </button>
+        )}
       </div>
     </article>
   );

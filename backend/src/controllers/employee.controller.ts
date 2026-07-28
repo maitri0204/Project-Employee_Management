@@ -41,7 +41,7 @@ export const createEmployee = async (req: Request, res: Response) => {
   try {
     const { firstName, middleName, lastName, jobRole, email, phone } = req.body;
 
-    if (!firstName || !lastName || !jobRole || !email || !phone) {
+    if (!firstName?.trim() || !lastName?.trim() || !jobRole || !email?.trim() || !phone?.trim()) {
       return sendError(res, "Please fill all required fields (name, role, email, phone).");
     }
 
@@ -49,14 +49,18 @@ export const createEmployee = async (req: Request, res: Response) => {
       return sendError(res, "Please select a valid job role.");
     }
 
-    if (!phone || !/^\+\d{1,4}\d{10}$/.test(phone)) {
+    const normalizedEmail = String(email).toLowerCase().trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      return sendError(res, "Please enter a valid email address.");
+    }
+
+    const normalizedPhone = String(phone).trim();
+    if (!/^\+\d{10,15}$/.test(normalizedPhone)) {
       return sendError(
         res,
         "Please provide a valid phone number with country code and 10 digits."
       );
     }
-
-    const normalizedEmail = email.toLowerCase().trim();
 
     const existingUser = await prisma.user.findUnique({
       where: { email: normalizedEmail },
@@ -71,10 +75,10 @@ export const createEmployee = async (req: Request, res: Response) => {
         role: "EMPLOYEE",
         employee: {
           create: {
-            firstName,
-            middleName: middleName || null,
-            lastName,
-            phone,
+            firstName: firstName.trim(),
+            middleName: middleName?.trim() || null,
+            lastName: lastName.trim(),
+            phone: normalizedPhone,
             jobRole,
             degreeCertificateUrls: [],
             documentsStatus: "NOT_SUBMITTED",
@@ -89,13 +93,17 @@ export const createEmployee = async (req: Request, res: Response) => {
     });
 
     if (user.employee) {
-      await initializeEmployeeLeaveBalance(user.employee.id);
+      try {
+        await initializeEmployeeLeaveBalance(user.employee.id);
+      } catch (balanceError) {
+        console.error("Leave balance init failed for new employee:", balanceError);
+      }
     }
 
     const employeeName = formatEmployeeName({
-      firstName,
-      middleName: middleName || null,
-      lastName,
+      firstName: firstName.trim(),
+      middleName: middleName?.trim() || null,
+      lastName: lastName.trim(),
     });
     void sendWelcomeEmail(normalizedEmail, employeeName).catch((err) => {
       console.error("Welcome email failed:", err);
@@ -109,6 +117,16 @@ export const createEmployee = async (req: Request, res: Response) => {
     return sendSuccess(res, "Employee added successfully.", refreshed, 201);
   } catch (error) {
     console.error("Create employee error:", error);
+
+    if (
+      error &&
+      typeof error === "object" &&
+      "code" in error &&
+      (error as { code?: string }).code === "P2002"
+    ) {
+      return sendError(res, "An employee with this email already exists.");
+    }
+
     return sendError(res, "Failed to add employee.", 500);
   }
 };

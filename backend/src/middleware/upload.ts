@@ -110,6 +110,22 @@ export const handleLeaveUpload = (
   });
 };
 
+export const parseEmployeeFormFields = (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  multer().none()(req, res, (err) => {
+    if (!err) return next();
+
+    if (err instanceof multer.MulterError) {
+      return sendError(res, err.message, 400);
+    }
+
+    return sendError(res, err.message || "Invalid form data.", 400);
+  });
+};
+
 export const parseFile = (
   files: Express.Multer.File[] | Express.Multer.File | undefined
 ): Express.Multer.File | undefined => {

@@ -159,19 +159,16 @@ export const updateDailyTask = async (req: Request, res: Response) => {
 
 export const deleteDailyTask = async (req: Request, res: Response) => {
   try {
-    const { userId, role } = (req as AuthRequest).user!;
+    const { role } = (req as AuthRequest).user!;
     const id = req.params.id as string;
+
+    if (!isAdminRole(role)) {
+      return sendError(res, "Only admins can delete tasks.", 403);
+    }
 
     const task = await prisma.dailyTask.findUnique({ where: { id } });
     if (!task) {
       return sendError(res, "Task not found.", 404);
-    }
-
-    if (!isAdminRole(role)) {
-      const employee = await getEmployeeForUser(userId);
-      if (!employee || employee.id !== task.employeeId) {
-        return sendError(res, "You can only delete your own tasks.", 403);
-      }
     }
 
     await prisma.dailyTask.delete({ where: { id } });

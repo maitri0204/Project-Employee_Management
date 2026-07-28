@@ -18,6 +18,6 @@ router.get("/my", getMyDailyTasks);
 router.get("/summary", authorizeAdmin, getDailyTaskSummary);
 router.get("/", authorizeAdmin, getAllDailyTasks);
 router.patch("/:id", updateDailyTask);
-router.delete("/:id", deleteDailyTask);
+router.delete("/:id", authorizeAdmin, deleteDailyTask);
 
 export default router;

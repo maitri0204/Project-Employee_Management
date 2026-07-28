@@ -12,14 +12,14 @@ import {
   deleteEmployee,
 } from "../controllers/employee.controller";
 import { authenticate, authorize, authorizeAdmin } from "../middleware/auth";
-import { handleEmployeeUpload } from "../middleware/upload";
+import { handleEmployeeUpload, parseEmployeeFormFields } from "../middleware/upload";
 
 const router = Router();
 
 router.use(authenticate);
 
 router.patch("/me", authorize("EMPLOYEE"), handleEmployeeUpload, updateMyProfile);
-router.post("/", authorizeAdmin, createEmployee);
+router.post("/", authorizeAdmin, parseEmployeeFormFields, createEmployee);
 router.get("/", authorizeAdmin, getAllEmployees);
 router.get("/:id", authorizeAdmin, getEmployeeById);
 router.put("/:id", authorizeAdmin, handleEmployeeUpload, updateEmployee);

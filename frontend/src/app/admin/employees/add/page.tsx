@@ -78,15 +78,14 @@ export default function AddEmployeePage() {
     }
 
     try {
-      const formData = new FormData();
-      formData.append("firstName", form.firstName.trim());
-      if (form.middleName.trim()) formData.append("middleName", form.middleName.trim());
-      formData.append("lastName", form.lastName.trim());
-      formData.append("jobRole", form.jobRole);
-      formData.append("email", form.email.trim());
-      formData.append("phone", `${phoneCountryCode}${form.phoneNumber}`);
-
-      await employeeApi.create(formData);
+      await employeeApi.create({
+        firstName: form.firstName.trim(),
+        ...(form.middleName.trim() ? { middleName: form.middleName.trim() } : {}),
+        lastName: form.lastName.trim(),
+        jobRole: form.jobRole,
+        email: form.email.trim(),
+        phone: `${phoneCountryCode}${form.phoneNumber}`,
+      });
       router.push("/admin/employees");
     } catch (err) {
       const message = err instanceof Error ? err.message : "Failed to add employee";

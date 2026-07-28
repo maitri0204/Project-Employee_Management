@@ -27,11 +27,20 @@ export const authApi = {
   getMe: () => api.get<User>("/auth/me"),
 };
 
+export type CreateEmployeePayload = {
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  jobRole: string;
+  email: string;
+  phone: string;
+};
+
 export const employeeApi = {
   getAll: (enrich = true) =>
     api.get<Employee[]>(`/employees${enrich ? "" : "?enrich=false"}`),
   getById: (id: string) => api.get<Employee>(`/employees/${id}`),
-  create: (formData: FormData) => api.post<Employee>("/employees", formData),
+  create: (data: CreateEmployeePayload) => api.post<Employee>("/employees", data),
   update: (id: string, formData: FormData) => api.put<Employee>(`/employees/${id}`, formData),
   updateMyProfile: (formData: FormData) => api.patch<Employee>("/employees/me", formData),
   approveDocument: (id: string, documentKey: DocumentKey) =>

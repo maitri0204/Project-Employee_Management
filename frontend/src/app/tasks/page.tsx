@@ -88,19 +88,6 @@ export default function TasksPage() {
     }
   };
 
-  const handleDelete = async (task: DailyTask) => {
-    setBusyTaskId(task.id);
-    setError("");
-    try {
-      await dailyTaskApi.delete(task.id);
-      setTasks((prev) => prev.filter((t) => t.id !== task.id));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete task");
-    } finally {
-      setBusyTaskId(null);
-    }
-  };
-
   return (
     <ProtectedRoute>
       <div className="space-y-6">
@@ -141,7 +128,6 @@ export default function TasksPage() {
                   task={task}
                   busy={busyTaskId === task.id}
                   onToggle={handleToggle}
-                  onDelete={handleDelete}
                 />
               ))}
             </KanbanColumn>
@@ -160,7 +146,6 @@ export default function TasksPage() {
                   task={task}
                   busy={busyTaskId === task.id}
                   onToggle={handleToggle}
-                  onDelete={handleDelete}
                 />
               ))}
             </KanbanColumn>

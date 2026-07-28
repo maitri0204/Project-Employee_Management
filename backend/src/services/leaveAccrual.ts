@@ -148,10 +148,20 @@ export async function initializeEmployeeLeaveBalance(employeeId: string) {
 }
 
 export async function runLeaveAccrualJobs() {
-  const plCount = await processMonthlyPlAccrual();
-  const fyCount = await processFinancialYearClSl();
-  if (plCount > 0 || fyCount > 0) {
-    console.log(`Leave accrual: PL months=${plCount}, FY CL/SL employees=${fyCount}`);
+  try {
+    const plCount = await processMonthlyPlAccrual();
+    const fyCount = await processFinancialYearClSl();
+    if (plCount > 0 || fyCount > 0) {
+      console.log(`Leave accrual: PL months=${plCount}, FY CL/SL employees=${fyCount}`);
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("Leave accrual job failed:", message);
+    if (/dns|database connection|connect/i.test(message)) {
+      console.error(
+        "Database is unreachable. Verify internet access and DATABASE_URL in backend/.env, then restart the server."
+      );
+    }
   }
 }
 
