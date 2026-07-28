@@ -547,6 +547,61 @@ export const getAllEmployees = async (req: Request, res: Response) => {
   }
 };
 
+export const getArchivedEmployees = async (req: Request, res: Response) => {
+  try {
+    const enrich = req.query.enrich !== "false";
+
+    const employees = await prisma.employee.findMany({
+      where: {
+        isArchived: true,
+        user: { role: "EMPLOYEE" },
+      },
+      select: {
+        id: true,
+        firstName: true,
+        middleName: true,
+        lastName: true,
+        phone: true,
+        jobRole: true,
+        joiningDate: true,
+        documentsStatus: true,
+        isProfileLocked: true,
+        isArchived: true,
+        createdAt: true,
+        updatedAt: true,
+        user: {
+          select: { id: true, email: true, role: true },
+        },
+        leaveBalance: {
+          select: { pl: true, cl: true, sl: true, lwpUsed: true },
+        },
+      },
+      orderBy: { updatedAt: "desc" },
+    });
+
+    if (!enrich) {
+      return sendSuccess(res, "Archived employees fetched successfully.", employees);
+    }
+
+    const employeeIds = employees.map((e) => e.id);
+    const summaries = await batchGetEmployeeLeaveSummaries(employeeIds);
+
+    const enriched = employees.map((employee) => {
+      const summary = summaries.get(employee.id);
+      return {
+        ...employee,
+        leaveUsage: summary?.usage,
+        leaveTotals: summary?.totals,
+      };
+    });
+
+    return sendSuccess(res, "Archived employees fetched successfully.", enriched);
+  } catch (error) {
+    console.error("Get archived employees error:", error);
+    return sendError(res, "Failed to fetch archived employees.", 500);
+  }
+};
+
 export const getEmployeeById = async (req: Request, res: Response) => {
   try {
     const id = req.params.id as string;
@@ -751,6 +806,43 @@ export const archiveEmployee = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Archive employee error:", error);
     return sendError(res, "Failed to archive employee.", 500);
+  }
+};
+
+export const unarchiveEmployee = async (req: Request, res: Response) => {
+  try {
+    const id = req.params.id as string;
+
+    const employee = await prisma.employee.findUnique({
+      where: { id },
+      include: { user: { select: { role: true } } },
+    });
+
+    if (!employee) {
+      return sendError(res, "Employee not found.", 404);
+    }
+
+    if (employee.user.role !== "EMPLOYEE") {
+      return sendError(res, "Only employees can be unarchived.");
+    }
+
+    if (employee.isArchived !== true) {
+      return sendError(res, "Employee is not archived.");
+    }
+
+    const updated = await prisma.employee.update({
+      where: { id },
+      data: { isArchived: false },
+      include: {
+        user: { select: { id: true, email: true, role: true } },
+        leaveBalance: true,
+      },
+    });
+
+    return sendSuccess(res, "Employee restored successfully.", updated);
+  } catch (error) {
+    console.error("Unarchive employee error:", error);
+    return sendError(res, "Failed to restore employee.", 500);
   }
 };
 

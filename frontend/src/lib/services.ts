@@ -39,6 +39,8 @@ export type CreateEmployeePayload = {
 export const employeeApi = {
   getAll: (enrich = true) =>
     api.get<Employee[]>(`/employees${enrich ? "" : "?enrich=false"}`),
+  getArchived: (enrich = true) =>
+    api.get<Employee[]>(`/employees/archived${enrich ? "" : "?enrich=false"}`),
   getById: (id: string) => api.get<Employee>(`/employees/${id}`),
   create: (data: CreateEmployeePayload) => api.post<Employee>("/employees", data),
   update: (id: string, formData: FormData) => api.put<Employee>(`/employees/${id}`, formData),
@@ -50,6 +52,7 @@ export const employeeApi = {
   toggleLock: (id: string, locked: boolean) =>
     api.patch<Employee>(`/employees/${id}/lock`, { locked }),
   archive: (id: string) => api.patch(`/employees/${id}/archive`, {}),
+  unarchive: (id: string) => api.patch<Employee>(`/employees/${id}/unarchive`, {}),
   delete: (id: string) => api.delete(`/employees/${id}`),
 };
 

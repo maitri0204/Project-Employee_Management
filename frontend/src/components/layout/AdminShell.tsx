@@ -10,6 +10,7 @@ import {
   FileText,
   LayoutDashboard,
   LogOut,
+  Archive,
   PartyPopper,
   UserPlus,
   Users,
@@ -71,6 +72,11 @@ const adminNav: NavItem[] = [
     label: "Holidays",
     href: "/admin/holidays",
     icon: <PartyPopper className="h-5 w-5" />,
+  },
+  {
+    label: "Archive",
+    href: "/admin/archive",
+    icon: <Archive className="h-5 w-5" />,
   },
 ];
 

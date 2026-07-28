@@ -17,6 +17,9 @@ export const sendOtp = async (req: Request, res: Response) => {
 
     const user = await prisma.user.findUnique({
       where: { email: email.toLowerCase().trim() },
+      include: {
+        employee: { select: { isArchived: true } },
+      },
     });
 
     if (!user) {
@@ -24,6 +27,14 @@ export const sendOtp = async (req: Request, res: Response) => {
         res,
         "No account found with this email. Please contact your administrator.",
         404
+      );
+    }
+
+    if (user.role === "EMPLOYEE" && user.employee?.isArchived) {
+      return sendError(
+        res,
+        "This account has been archived. Please contact your administrator.",
+        403
       );
     }
 
@@ -89,6 +100,14 @@ export const verifyOtp = async (req: Request, res: Response) => {
 
     if (!user) {
       return sendError(res, "User not found.", 404);
+    }
+
+    if (user.role === "EMPLOYEE" && user.employee?.isArchived) {
+      return sendError(
+        res,
+        "This account has been archived. Please contact your administrator.",
+        403
+      );
     }
 
     await prisma.otp.delete({ where: { id: otpRecord.id } });
