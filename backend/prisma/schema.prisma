@@ -127,16 +127,18 @@ model CompanyHoliday {
 }
 
 model DailyTask {
-  id          String   @id @default(auto()) @map("_id") @db.ObjectId
-  employeeId  String   @db.ObjectId
-  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-  taskDate    DateTime
-  title       String
-  description String?
-  status      String   @default("PLANNED")
-  completedAt DateTime?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id              String   @id @default(auto()) @map("_id") @db.ObjectId
+  employeeId      String   @db.ObjectId
+  employee        Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  taskDate        DateTime
+  title           String
+  description     String?
+  status          String   @default("PLANNED")
+  assignedByAdmin Boolean  @default(false)
+  priority        String?
+  completedAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
   @@index([employeeId, taskDate])
 }

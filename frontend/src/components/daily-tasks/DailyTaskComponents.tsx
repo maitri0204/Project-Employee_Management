@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import {
   Calendar,
   CheckCircle2,
@@ -17,8 +18,34 @@ import {
 } from "lucide-react";
 import { formatDisplayDate, toDateInputValue } from "@/lib/dateUtils";
 import { JOB_ROLES } from "@/constants/employee";
-import { DailyTask, DailyTaskSummary } from "@/types";
+import {
+  DAILY_TASK_PRIORITY_OPTIONS,
+  DAILY_TASK_PRIORITY_STYLES,
+  getDailyTaskPriorityLabel,
+} from "@/constants/dailyTasks";
+import { DailyTask, DailyTaskPriority, DailyTaskSummary, Employee } from "@/types";
 import { Badge, Button, Input, Select, Textarea } from "@/components/ui";
+
+export function TaskMetaBadges({ task }: { task: DailyTask }) {
+  const priorityStyle = task.priority ? DAILY_TASK_PRIORITY_STYLES[task.priority] : null;
+
+  return (
+    <div className="mt-2 flex flex-wrap gap-2">
+      {task.assignedByAdmin && (
+        <span className="inline-flex items-center rounded-full border border-indigo-200 bg-indigo-50 px-2.5 py-1 text-[11px] font-semibold text-indigo-800">
+          Assigned by admin
+        </span>
+      )}
+      {task.priority && priorityStyle && (
+        <span
+          className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold ${priorityStyle.className}`}
+        >
+          {getDailyTaskPriorityLabel(task.priority)}
+        </span>
+      )}
+    </div>
+  );
+}
 
 export function shiftDate(dateStr: string, days: number) {
   const [y, m, d] = dateStr.split("-").map(Number);
@@ -351,6 +378,7 @@ export function TaskCard({
           {task.description && (
             <p className="mt-2 text-sm leading-relaxed text-slate-600">{task.description}</p>
           )}
+          <TaskMetaBadges task={task} />
           {completed && task.completedAt && (
             <p className="mt-2 inline-flex items-center gap-1 rounded-full bg-emerald-100/80 px-2.5 py-1 text-xs font-medium text-emerald-800">
               <CheckCircle2 className="h-3 w-3" />
@@ -515,8 +543,11 @@ export function AdminEmployeeTaskGroup({
                   {task.title}
                 </p>
                 {task.description && <p className="mt-1 text-sm text-slate-600">{task.description}</p>}
+                <TaskMetaBadges task={task} />
               </div>
-              <Badge variant={done ? "success" : "warning"}>{done ? "Completed" : "Planned"}</Badge>
+              <div className="flex flex-col items-end gap-2">
+                <Badge variant={done ? "success" : "warning"}>{done ? "Completed" : "Planned"}</Badge>
+              </div>
             </div>
           );
         })}
@@ -525,37 +556,178 @@ export function AdminEmployeeTaskGroup({
   );
 }
 
-export function AdminFiltersBar({
+export function AdminAssignTaskForm({
+  employees,
   selectedDate,
   roleFilter,
+  employeeId,
   onDateChange,
   onRoleChange,
+  onEmployeeChange,
+  submitting,
+  onSubmit,
 }: {
+  employees: Employee[];
   selectedDate: string;
   roleFilter: string;
+  employeeId: string;
   onDateChange: (date: string) => void;
   onRoleChange: (role: string) => void;
+  onEmployeeChange: (employeeId: string) => void;
+  submitting: boolean;
+  onSubmit: (data: {
+    employeeId: string;
+    title: string;
+    description: string;
+    priority: DailyTaskPriority;
+  }) => Promise<void>;
 }) {
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [priority, setPriority] = useState<DailyTaskPriority>("IMPORTANT");
+
+  const filteredEmployees = useMemo(() => {
+    if (!roleFilter) return [];
+    return employees
+      .filter((employee) => employee.jobRole === roleFilter)
+      .sort((a, b) => {
+        const nameA = [a.firstName, a.middleName, a.lastName].filter(Boolean).join(" ");
+        const nameB = [b.firstName, b.middleName, b.lastName].filter(Boolean).join(" ");
+        return nameA.localeCompare(nameB);
+      });
+  }, [employees, roleFilter]);
+
+  const handleRoleChange = (value: string) => {
+    onRoleChange(value);
+    onEmployeeChange("");
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!roleFilter || !employeeId || !title.trim()) return;
+
+    await onSubmit({
+      employeeId,
+      title: title.trim(),
+      description: description.trim(),
+      priority,
+    });
+
+    setTitle("");
+    setDescription("");
+    setPriority("IMPORTANT");
+  };
+
   return (
-    <div className="rounded-2xl border border-slate-200/80 bg-white p-5 shadow-sm">
-      <div className="mb-4 flex items-center gap-2">
-        <Calendar className="h-5 w-5 text-indigo-600" />
-        <div>
-          <p className="text-sm font-semibold text-slate-900">Filters</p>
-          <p className="text-xs text-slate-500">{formatDisplayDate(selectedDate)}</p>
+    <div className="overflow-hidden rounded-2xl border border-violet-100 bg-gradient-to-br from-white to-violet-50/40 shadow-sm">
+      <div className="border-b border-violet-100 bg-violet-600/5 px-5 py-4">
+        <div className="flex items-center gap-2">
+          <div className="rounded-lg bg-violet-600 p-2 text-white shadow">
+            <ClipboardList className="h-4 w-4" />
+          </div>
+          <div>
+            <h2 className="text-base font-semibold text-slate-900">Assign task to employee</h2>
+            <p className="text-xs text-slate-500">
+              Choose date, role, and employee, then add the task details below.
+            </p>
+          </div>
         </div>
       </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <Input label="Date" type="date" value={selectedDate} onChange={(e) => onDateChange(e.target.value)} />
-        <Select label="Role" value={roleFilter} onChange={(e) => onRoleChange(e.target.value)}>
-          <option value="">All roles</option>
-          {JOB_ROLES.map((role) => (
-            <option key={role} value={role}>
-              {role}
+
+      <form onSubmit={(e) => void handleSubmit(e)} className="space-y-4 p-5">
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <div className="mb-3 flex items-center gap-2">
+            <Calendar className="h-4 w-4 text-indigo-600" />
+            <p className="text-sm font-semibold text-slate-900">Filters</p>
+          </div>
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+            <Input
+              label="Date"
+              type="date"
+              value={selectedDate}
+              onChange={(e) => onDateChange(e.target.value)}
+              required
+            />
+            <Select
+              label="Role"
+              value={roleFilter}
+              onChange={(e) => handleRoleChange(e.target.value)}
+              required
+            >
+              <option value="">Select role</option>
+              {JOB_ROLES.map((role) => (
+                <option key={role} value={role}>
+                  {role}
+                </option>
+              ))}
+            </Select>
+            <Select
+              label="Employee name"
+              value={employeeId}
+              onChange={(e) => onEmployeeChange(e.target.value)}
+              required
+              disabled={!roleFilter}
+            >
+              <option value="">
+                {roleFilter ? "Select employee" : "Select a role first"}
+              </option>
+              {filteredEmployees.map((employee) => {
+                const name = [employee.firstName, employee.middleName, employee.lastName]
+                  .filter(Boolean)
+                  .join(" ");
+                return (
+                  <option key={employee.id} value={employee.id}>
+                    {name}
+                  </option>
+                );
+              })}
+            </Select>
+          </div>
+          {roleFilter && filteredEmployees.length === 0 && (
+            <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+              No active employees found for the &quot;{roleFilter}&quot; role.
+            </p>
+          )}
+        </div>
+
+        <Input
+          label="Task title"
+          placeholder="e.g. Complete client onboarding call"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          required
+        />
+
+        <Textarea
+          label="Notes (optional)"
+          placeholder="Add instructions or context for the employee"
+          rows={2}
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+        />
+
+        <Select
+          label="Task level"
+          value={priority}
+          onChange={(e) => setPriority(e.target.value as DailyTaskPriority)}
+          required
+        >
+          {DAILY_TASK_PRIORITY_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
             </option>
           ))}
         </Select>
-      </div>
+
+        <Button
+          type="submit"
+          disabled={submitting || !roleFilter || !employeeId || !title.trim()}
+          className="gap-2"
+        >
+          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+          Assign task
+        </Button>
+      </form>
     </div>
   );
 }

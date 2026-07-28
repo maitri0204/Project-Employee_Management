@@ -132,7 +132,7 @@ export default function LeaveAssignPage() {
               </div>
               <p className="mt-2 text-xs text-slate-500">
                 CL is split across the financial year: half in Apr-Sep, half in Oct-Mar. Unused CL
-                from Apr-Sep carries forward to Oct-Mar. SL resets each April.
+                from Apr-Sep carries forward to Oct-Mar. SL & CL resets each April.
               </p>
             </div>
 

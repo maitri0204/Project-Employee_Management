@@ -16,6 +16,7 @@ import {
   DailyTask,
   DailyTaskSummary,
   DailyTaskStatus,
+  DailyTaskPriority,
   HolidayImportResult,
   ManagedHoliday,
 } from "@/types";
@@ -149,6 +150,13 @@ export const holidayApi = {
 export const dailyTaskApi = {
   create: (data: { title: string; description?: string; taskDate?: string }) =>
     api.post<DailyTask>("/daily-tasks", data),
+  assign: (data: {
+    employeeId: string;
+    title: string;
+    description?: string;
+    taskDate?: string;
+    priority: DailyTaskPriority;
+  }) => api.post<DailyTask>("/daily-tasks/assign", data),
   getMy: (date: string) =>
     api.get<DailyTask[]>(`/daily-tasks/my?date=${encodeURIComponent(date)}`),
   update: (
@@ -156,9 +164,10 @@ export const dailyTaskApi = {
     data: Partial<{ title: string; description: string; status: DailyTaskStatus }>
   ) => api.patch<DailyTask>(`/daily-tasks/${id}`, data),
   delete: (id: string) => api.delete(`/daily-tasks/${id}`),
-  getAll: (date: string, jobRole?: string) => {
+  getAll: (date: string, jobRole?: string, employeeId?: string) => {
     const params = new URLSearchParams({ date });
     if (jobRole) params.set("jobRole", jobRole);
+    if (employeeId) params.set("employeeId", employeeId);
     return api.get<DailyTask[]>(`/daily-tasks?${params.toString()}`);
   },
   getSummary: (date: string, jobRole?: string) => {

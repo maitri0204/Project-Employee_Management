@@ -3,6 +3,19 @@ import { dateKey, parseDateOnly } from "./leaveCalendar";
 
 export type DailyTaskStatus = "PLANNED" | "COMPLETED";
 
+export const DAILY_TASK_PRIORITIES = [
+  "URGENT",
+  "IMPORTANT",
+  "URGENT_AND_IMPORTANT",
+  "IMPORTANT_NOT_URGENT",
+] as const;
+
+export type DailyTaskPriority = (typeof DAILY_TASK_PRIORITIES)[number];
+
+export function isValidTaskPriority(value: unknown): value is DailyTaskPriority {
+  return typeof value === "string" && (DAILY_TASK_PRIORITIES as readonly string[]).includes(value);
+}
+
 export function parseTaskDateInput(value?: string): Date {
   if (!value?.trim()) {
     return parseDateOnly(new Date());

@@ -274,6 +274,12 @@ export interface ApplyLeaveData {
 
 export type DailyTaskStatus = "PLANNED" | "COMPLETED";
 
+export type DailyTaskPriority =
+  | "URGENT"
+  | "IMPORTANT"
+  | "URGENT_AND_IMPORTANT"
+  | "IMPORTANT_NOT_URGENT";
+
 export interface DailyTask {
   id: string;
   employeeId: string;
@@ -281,6 +287,8 @@ export interface DailyTask {
   title: string;
   description?: string | null;
   status: DailyTaskStatus;
+  assignedByAdmin?: boolean;
+  priority?: DailyTaskPriority | null;
   completedAt?: string | null;
   createdAt: string;
   updatedAt: string;

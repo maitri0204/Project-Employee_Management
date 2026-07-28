@@ -1,5 +1,6 @@
 import { Router } from "express";
 import {
+  assignDailyTask,
   createDailyTask,
   deleteDailyTask,
   getAllDailyTasks,
@@ -13,6 +14,7 @@ const router = Router();
 
 router.use(authenticate);
 
+router.post("/assign", authorizeAdmin, assignDailyTask);
 router.post("/", createDailyTask);
 router.get("/my", getMyDailyTasks);
 router.get("/summary", authorizeAdmin, getDailyTaskSummary);

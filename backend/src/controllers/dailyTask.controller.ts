@@ -7,6 +7,7 @@ import {
   formatEmployeeName,
   getAllTasksForDate,
   getEmployeeTasksForDate,
+  isValidTaskPriority,
   parseTaskDateInput,
   serializeDailyTask,
 } from "../services/dailyTask.service";
@@ -38,6 +39,8 @@ export const createDailyTask = async (req: Request, res: Response) => {
         title: title.trim(),
         description: description?.trim() || null,
         status: "PLANNED",
+        assignedByAdmin: false,
+        priority: null,
       },
       include: {
         employee: {
@@ -57,6 +60,67 @@ export const createDailyTask = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Create daily task error:", error);
     return sendError(res, "Failed to create task.", 500);
+  }
+};
+
+export const assignDailyTask = async (req: Request, res: Response) => {
+  try {
+    const { employeeId, title, description, taskDate, priority } = req.body;
+
+    if (!employeeId?.trim()) {
+      return sendError(res, "Please select an employee.");
+    }
+
+    if (!title?.trim()) {
+      return sendError(res, "Task title is required.");
+    }
+
+    if (!isValidTaskPriority(priority)) {
+      return sendError(res, "Please select a valid task priority level.");
+    }
+
+    const employee = await prisma.employee.findFirst({
+      where: {
+        id: employeeId.trim(),
+        isArchived: false,
+        user: { role: "EMPLOYEE" },
+      },
+      select: { id: true },
+    });
+
+    if (!employee) {
+      return sendError(res, "Employee not found.", 404);
+    }
+
+    const date = parseTaskDateInput(taskDate);
+    const task = await prisma.dailyTask.create({
+      data: {
+        employeeId: employee.id,
+        taskDate: date,
+        title: title.trim(),
+        description: description?.trim() || null,
+        status: "PLANNED",
+        assignedByAdmin: true,
+        priority,
+      },
+      include: {
+        employee: {
+          select: {
+            id: true,
+            firstName: true,
+            middleName: true,
+            lastName: true,
+            jobRole: true,
+            user: { select: { email: true } },
+          },
+        },
+      },
+    });
+
+    return sendSuccess(res, "Task assigned successfully.", serializeDailyTask(task), 201);
+  } catch (error) {
+    console.error("Assign daily task error:", error);
+    return sendError(res, "Failed to assign task.", 500);
   }
 };
 

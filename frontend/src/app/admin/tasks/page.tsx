@@ -3,17 +3,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import ProtectedRoute from "@/components/ProtectedRoute";
 import {
+  AdminAssignTaskForm,
   AdminEmployeeTaskGroup,
-  AdminFiltersBar,
   AdminSummaryGrid,
   AdminTasksHero,
   TasksEmptyState,
   TasksErrorBanner,
   TasksLoadingState,
 } from "@/components/daily-tasks/DailyTaskComponents";
-import { dailyTaskApi } from "@/lib/services";
+import { dailyTaskApi, employeeApi } from "@/lib/services";
 import { toDateInputValue } from "@/lib/dateUtils";
-import { DailyTask, DailyTaskSummary } from "@/types";
+import { DailyTask, DailyTaskPriority, DailyTaskSummary, Employee } from "@/types";
 
 function formatName(emp: { firstName: string; middleName?: string | null; lastName: string }) {
   return [emp.firstName, emp.middleName, emp.lastName].filter(Boolean).join(" ");
@@ -22,17 +22,25 @@ function formatName(emp: { firstName: string; middleName?: string | null; lastNa
 export default function AdminTasksPage() {
   const [selectedDate, setSelectedDate] = useState(toDateInputValue());
   const [roleFilter, setRoleFilter] = useState("");
+  const [employeeFilter, setEmployeeFilter] = useState("");
   const [tasks, setTasks] = useState<DailyTask[]>([]);
   const [summary, setSummary] = useState<DailyTaskSummary | null>(null);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
+  const [assigning, setAssigning] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
 
   const fetchTasks = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
       const [tasksRes, summaryRes] = await Promise.all([
-        dailyTaskApi.getAll(selectedDate, roleFilter || undefined),
+        dailyTaskApi.getAll(
+          selectedDate,
+          roleFilter || undefined,
+          employeeFilter || undefined
+        ),
         dailyTaskApi.getSummary(selectedDate, roleFilter || undefined),
       ]);
       setTasks(tasksRes.data ?? []);
@@ -42,11 +50,45 @@ export default function AdminTasksPage() {
     } finally {
       setLoading(false);
     }
-  }, [selectedDate, roleFilter]);
+  }, [selectedDate, roleFilter, employeeFilter]);
 
   useEffect(() => {
     void fetchTasks();
   }, [fetchTasks]);
+
+  useEffect(() => {
+    employeeApi
+      .getAll(false)
+      .then((res) => setEmployees(res.data ?? []))
+      .catch(() => setEmployees([]));
+  }, []);
+
+  const handleAssignTask = async (data: {
+    employeeId: string;
+    title: string;
+    description: string;
+    priority: DailyTaskPriority;
+  }) => {
+    setAssigning(true);
+    setError("");
+    setSuccess("");
+    try {
+      await dailyTaskApi.assign({
+        employeeId: data.employeeId,
+        title: data.title,
+        description: data.description || undefined,
+        taskDate: selectedDate,
+        priority: data.priority,
+      });
+      setSuccess("Task assigned successfully.");
+      await fetchTasks();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to assign task");
+      throw err;
+    } finally {
+      setAssigning(false);
+    }
+  };
 
   const groupedTasks = useMemo(() => {
     const map = new Map<string, { name: string; role?: string | null; email?: string; tasks: DailyTask[] }>();
@@ -67,33 +109,43 @@ export default function AdminTasksPage() {
     return Array.from(map.values()).sort((a, b) => a.name.localeCompare(b.name));
   }, [tasks]);
 
+  const emptyHint = employeeFilter
+    ? "This employee has no tasks for the selected date."
+    : roleFilter
+      ? `No employees with the "${roleFilter}" role have tasks for this date.`
+      : "Select date, role, and employee above to assign a task, or pick filters to view team tasks.";
+
   return (
     <ProtectedRoute adminOnly>
       <div className="space-y-6">
         <AdminTasksHero summary={summary} />
 
-        <AdminFiltersBar
+        <AdminAssignTaskForm
+          employees={employees}
           selectedDate={selectedDate}
           roleFilter={roleFilter}
+          employeeId={employeeFilter}
           onDateChange={setSelectedDate}
           onRoleChange={setRoleFilter}
+          onEmployeeChange={setEmployeeFilter}
+          submitting={assigning}
+          onSubmit={handleAssignTask}
         />
 
-        {summary && <AdminSummaryGrid summary={summary} />}
+        {summary && !employeeFilter && <AdminSummaryGrid summary={summary} />}
+
+        {success && (
+          <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            {success}
+          </div>
+        )}
 
         {error && <TasksErrorBanner message={error} />}
 
         {loading ? (
           <TasksLoadingState label="Loading employee tasks..." />
         ) : groupedTasks.length === 0 ? (
-          <TasksEmptyState
-            title="No tasks for this day"
-            hint={
-              roleFilter
-                ? `No employees with the "${roleFilter}" role have logged tasks for this date.`
-                : "No employees have submitted tasks for this date yet. Check back later or pick another day."
-            }
-          />
+          <TasksEmptyState title="No tasks for this selection" hint={emptyHint} />
         ) : (
           <div className="space-y-5">
             {groupedTasks.map((group) => (
