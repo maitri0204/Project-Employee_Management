@@ -44,14 +44,14 @@ const adminNav: NavItem[] = [
     icon: <UserPlus className="h-5 w-5" />,
   },
   {
-    label: "Leave Requests",
-    href: "/admin/leaves",
-    icon: <ClipboardList className="h-5 w-5" />,
-  },
-  {
     label: "Daily Tasks",
     href: "/admin/tasks",
     icon: <CheckSquare className="h-5 w-5" />,
+  },
+  {
+    label: "Leave Requests",
+    href: "/admin/leaves",
+    icon: <ClipboardList className="h-5 w-5" />,
   },
   {
     label: "Leave Assign",
@@ -64,14 +64,14 @@ const adminNav: NavItem[] = [
     icon: <CalendarDays className="h-5 w-5" />,
   },
   {
+    label: "Add Holidays",
+    href: "/admin/holidays",
+    icon: <PartyPopper className="h-5 w-5" />,
+  },
+  {
     label: "HR Policy",
     href: "/admin/hr-policy",
     icon: <FileText className="h-5 w-5" />,
-  },
-  {
-    label: "Holidays",
-    href: "/admin/holidays",
-    icon: <PartyPopper className="h-5 w-5" />,
   },
   {
     label: "Archive",

@@ -24,14 +24,14 @@ const employeeNav = [
     icon: <CheckSquare className="h-5 w-5" />,
   },
   {
-    label: "My Profile",
-    href: "/profile",
-    icon: <UserCircle className="h-5 w-5" />,
-  },
-  {
     label: "HR Policy",
     href: "/hr-policy",
     icon: <FileText className="h-5 w-5" />,
+  },
+  {
+    label: "My Profile",
+    href: "/profile",
+    icon: <UserCircle className="h-5 w-5" />,
   },
 ];
 
