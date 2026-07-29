@@ -99,19 +99,6 @@ type CreateTaskInput = {
 };
 
 async function markTaskAsAdminAssigned(taskId: string, priority: DailyTaskPriority) {
-  try {
-    await prisma.dailyTask.update({
-      where: { id: taskId },
-      data: { assignedByAdmin: true, priority },
-    });
-    return;
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "";
-    if (!message.includes("Unknown argument")) {
-      throw error;
-    }
-  }
-
   await prisma.$runCommandRaw({
     update: "DailyTask",
     updates: [
@@ -147,5 +134,9 @@ export async function createAdminAssignedTask(
     throw new Error("Assigned task could not be loaded after creation.");
   }
 
-  return task;
+  return {
+    ...task,
+    assignedByAdmin: true,
+    priority: input.priority,
+  };
 }
