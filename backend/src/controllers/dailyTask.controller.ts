@@ -39,8 +39,6 @@ export const createDailyTask = async (req: Request, res: Response) => {
         title: title.trim(),
         description: description?.trim() || null,
         status: "PLANNED",
-        assignedByAdmin: false,
-        priority: null,
       },
       include: {
         employee: {
@@ -59,6 +57,13 @@ export const createDailyTask = async (req: Request, res: Response) => {
     return sendSuccess(res, "Task added successfully.", serializeDailyTask(task), 201);
   } catch (error) {
     console.error("Create daily task error:", error);
+    if (error instanceof Error && error.message.includes("Unknown argument")) {
+      return sendError(
+        res,
+        "Task creation is temporarily unavailable. Please restart the backend server and try again.",
+        500
+      );
+    }
     return sendError(res, "Failed to create task.", 500);
   }
 };
