@@ -53,8 +53,8 @@ model Employee {
   city                  String?
   pincode               String?
   phone                 String
-  panNumber             String?        @unique
-  aadharNumber          String?        @unique
+  panNumber             String?
+  aadharNumber          String?
   bankAccountNumber     String?
   accountType           String?
   ifscCode              String?

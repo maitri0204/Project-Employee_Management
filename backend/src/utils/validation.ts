@@ -37,3 +37,23 @@ export const validateIdentityFields = (data: {
     validateIfscCode(data.ifscCode)
   );
 };
+
+export const getPrismaUniqueConstraintMessage = (error: unknown): string | null => {
+  if (!error || typeof error !== "object" || !("code" in error)) return null;
+  if ((error as { code?: string }).code !== "P2002") return null;
+
+  const target = (error as { meta?: { target?: string | string[] } }).meta?.target;
+  const fields = Array.isArray(target) ? target.join(" ") : String(target ?? "");
+
+  if (fields.includes("email")) {
+    return "An employee with this email already exists.";
+  }
+  if (fields.includes("panNumber")) {
+    return "An employee with this PAN number already exists.";
+  }
+  if (fields.includes("aadharNumber")) {
+    return "An employee with this Aadhar number already exists.";
+  }
+
+  return "A record with these details already exists.";
+};

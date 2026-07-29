@@ -22,7 +22,7 @@ import { batchGetEmployeeLeaveSummaries } from "../services/leaveSummaryBatch";
 import { getEmployeeLeaveSummary } from "../services/leaveUsage";
 import { sendDocumentRejectionEmail, sendWelcomeEmail } from "../utils/email";
 import { sendError, sendSuccess } from "../utils/response";
-import { validateAadharNumber, validateIfscCode, validatePanNumber } from "../utils/validation";
+import { validateAadharNumber, validateIfscCode, validatePanNumber, getPrismaUniqueConstraintMessage } from "../utils/validation";
 import { AuthRequest } from "../types";
 
 const parseFile = (files: Express.Multer.File[] | undefined) => {
@@ -118,13 +118,9 @@ export const createEmployee = async (req: Request, res: Response) => {
   } catch (error) {
     console.error("Create employee error:", error);
 
-    if (
-      error &&
-      typeof error === "object" &&
-      "code" in error &&
-      (error as { code?: string }).code === "P2002"
-    ) {
-      return sendError(res, "An employee with this email already exists.");
+    const uniqueMessage = getPrismaUniqueConstraintMessage(error);
+    if (uniqueMessage) {
+      return sendError(res, uniqueMessage);
     }
 
     return sendError(res, "Failed to add employee.", 500);
