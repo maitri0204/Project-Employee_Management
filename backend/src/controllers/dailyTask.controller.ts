@@ -4,6 +4,7 @@ import { AuthRequest } from "../types";
 import { sendError, sendSuccess } from "../utils/response";
 import { isAdminRole } from "../utils/roles";
 import {
+  createAdminAssignedTask,
   formatEmployeeName,
   getAllTasksForDate,
   getEmployeeTasksForDate,
@@ -98,33 +99,24 @@ export const assignDailyTask = async (req: Request, res: Response) => {
     }
 
     const date = parseTaskDateInput(taskDate);
-    const task = await prisma.dailyTask.create({
-      data: {
-        employeeId: employee.id,
-        taskDate: date,
-        title: title.trim(),
-        description: description?.trim() || null,
-        status: "PLANNED",
-        assignedByAdmin: true,
-        priority,
-      },
-      include: {
-        employee: {
-          select: {
-            id: true,
-            firstName: true,
-            middleName: true,
-            lastName: true,
-            jobRole: true,
-            user: { select: { email: true } },
-          },
-        },
-      },
+    const task = await createAdminAssignedTask({
+      employeeId: employee.id,
+      taskDate: date,
+      title: title.trim(),
+      description: description?.trim() || null,
+      priority,
     });
 
     return sendSuccess(res, "Task assigned successfully.", serializeDailyTask(task), 201);
   } catch (error) {
     console.error("Assign daily task error:", error);
+    if (error instanceof Error && error.message.includes("Unknown argument")) {
+      return sendError(
+        res,
+        "Task assignment is temporarily unavailable. Please restart the backend server and try again.",
+        500
+      );
+    }
     return sendError(res, "Failed to assign task.", 500);
   }
 };

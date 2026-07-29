@@ -90,3 +90,62 @@ export function serializeDailyTask<T extends { taskDate: Date; completedAt?: Dat
     completedAt: task.completedAt ? task.completedAt.toISOString() : null,
   };
 }
+
+type CreateTaskInput = {
+  employeeId: string;
+  taskDate: Date;
+  title: string;
+  description?: string | null;
+};
+
+async function markTaskAsAdminAssigned(taskId: string, priority: DailyTaskPriority) {
+  try {
+    await prisma.dailyTask.update({
+      where: { id: taskId },
+      data: { assignedByAdmin: true, priority },
+    });
+    return;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "";
+    if (!message.includes("Unknown argument")) {
+      throw error;
+    }
+  }
+
+  await prisma.$runCommandRaw({
+    update: "DailyTask",
+    updates: [
+      {
+        q: { _id: { $oid: taskId } },
+        u: { $set: { assignedByAdmin: true, priority } },
+      },
+    ],
+  });
+}
+
+export async function createAdminAssignedTask(
+  input: CreateTaskInput & { priority: DailyTaskPriority }
+) {
+  const base = await prisma.dailyTask.create({
+    data: {
+      employeeId: input.employeeId,
+      taskDate: input.taskDate,
+      title: input.title,
+      description: input.description?.trim() || null,
+      status: "PLANNED",
+    },
+  });
+
+  await markTaskAsAdminAssigned(base.id, input.priority);
+
+  const task = await prisma.dailyTask.findUnique({
+    where: { id: base.id },
+    include: taskInclude,
+  });
+
+  if (!task) {
+    throw new Error("Assigned task could not be loaded after creation.");
+  }
+
+  return task;
+}
