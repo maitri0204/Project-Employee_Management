@@ -232,6 +232,10 @@ export const deleteDailyTask = async (req: Request, res: Response) => {
       return sendError(res, "Task not found.", 404);
     }
 
+    if (!task.assignedByAdmin) {
+      return sendError(res, "Only admin-assigned tasks can be deleted.", 403);
+    }
+
     await prisma.dailyTask.delete({ where: { id } });
     return sendSuccess(res, "Task deleted successfully.");
   } catch (error) {

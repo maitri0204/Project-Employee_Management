@@ -28,6 +28,7 @@ export default function AdminTasksPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [assigning, setAssigning] = useState(false);
+  const [deletingTaskId, setDeletingTaskId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
@@ -87,6 +88,26 @@ export default function AdminTasksPage() {
       throw err;
     } finally {
       setAssigning(false);
+    }
+  };
+
+  const handleDeleteTask = async (task: DailyTask) => {
+    if (!task.assignedByAdmin) return;
+    if (!window.confirm(`Delete assigned task "${task.title}"?`)) return;
+
+    setDeletingTaskId(task.id);
+    setError("");
+    setSuccess("");
+    try {
+      await dailyTaskApi.delete(task.id);
+      setTasks((prev) => prev.filter((t) => t.id !== task.id));
+      setSuccess("Assigned task deleted successfully.");
+      const summaryRes = await dailyTaskApi.getSummary(selectedDate, roleFilter || undefined);
+      setSummary(summaryRes.data ?? null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete task");
+    } finally {
+      setDeletingTaskId(null);
     }
   };
 
@@ -155,6 +176,8 @@ export default function AdminTasksPage() {
                 role={group.role}
                 email={group.email}
                 tasks={group.tasks}
+                deletingTaskId={deletingTaskId}
+                onDelete={handleDeleteTask}
               />
             ))}
           </div>

@@ -489,11 +489,15 @@ export function AdminEmployeeTaskGroup({
   role,
   email,
   tasks,
+  deletingTaskId,
+  onDelete,
 }: {
   name: string;
   role?: string | null;
   email?: string;
   tasks: DailyTask[];
+  deletingTaskId?: string | null;
+  onDelete?: (task: DailyTask) => void;
 }) {
   const planned = tasks.filter((t) => t.status === "PLANNED");
   const completed = tasks.filter((t) => t.status === "COMPLETED");
@@ -529,8 +533,11 @@ export function AdminEmployeeTaskGroup({
       <div className="divide-y divide-slate-100">
         {tasks.map((task) => {
           const done = task.status === "COMPLETED";
+          const canDelete = Boolean(task.assignedByAdmin && onDelete);
+          const isDeleting = deletingTaskId === task.id;
+
           return (
-            <div key={task.id} className="flex items-start gap-3 px-5 py-4 transition hover:bg-slate-50/80">
+            <div key={task.id} className="group flex items-start gap-3 px-5 py-4 transition hover:bg-slate-50/80">
               <div
                 className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${
                   done ? "bg-emerald-100 text-emerald-600" : "bg-amber-100 text-amber-600"
@@ -547,6 +554,21 @@ export function AdminEmployeeTaskGroup({
               </div>
               <div className="flex flex-col items-end gap-2">
                 <Badge variant={done ? "success" : "warning"}>{done ? "Completed" : "Planned"}</Badge>
+                {canDelete && (
+                  <button
+                    type="button"
+                    disabled={isDeleting}
+                    onClick={() => onDelete?.(task)}
+                    className="rounded-lg p-1.5 text-slate-300 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-50"
+                    title="Delete assigned task"
+                  >
+                    {isDeleting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           );
